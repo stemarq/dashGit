@@ -131,3 +131,20 @@ async def _sync_commits(
     return len(rows)
 
 
+async def _fetch_events(
+    gl: GitLabClient, project: str | int, issues: list[dict[str, Any]]
+) -> dict[int, list[dict[str, Any]]]:
+    async def one(iid: int) -> tuple[int, list[dict[str, Any]]]:
+        return iid, await gl.label_events(project, iid)
+
+    results = await asyncio.gather(*(one(i["iid"]) for i in issues), return_exceptions=True)
+    out: dict[int, list[dict[str, Any]]] = {}
+    for res in results:
+        if isinstance(res, BaseException):
+            log.warning("falha ao buscar eventos de label: %s", res)
+            continue
+        iid, evts = res
+        out[iid] = evts
+    return out
+
+
