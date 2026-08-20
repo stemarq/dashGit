@@ -406,3 +406,39 @@ def _resolve_overlaps(
     return out
 
 
+def _intervals(
+    events: list[Any],
+    tracked: set[str] | None,
+    hidden: set[str],
+    closed_at: datetime | None,
+) -> list[Interval]:
+    """Casa cada `add` com o `remove` seguinte da mesma label."""
+    open_by_label: dict[str, tuple[datetime, str | None]] = {}
+    out: list[Interval] = []
+
+    for ev in events:
+        label = ev["label_name"]
+        if not label or label.lower() in hidden:
+            continue
+        if tracked is not None and label.lower() not in tracked:
+            continue
+        ts = parse_ts(ev["created_at"])
+        if ts is None:
+            continue
+        if ev["action"] == "add":
+            # add duplicado sem remove: mantem o primeiro, que e o inicio real
+            open_by_label.setdefault(label, (ts, ev["user_name"]))
+        elif ev["action"] == "remove":
+            start = open_by_label.pop(label, None)
+            if start is None:
+                continue  # remove sem add correspondente (label anterior ao rastreio)
+            out.append(Interval(label, start[0], ts, start[1]))
+
+    # labels ainda aplicadas: contam ate o fechamento da issue ou ate agora
+    for label, (start, user) in open_by_label.items():
+        out.append(Interval(label, start, closed_at, user))
+
+    out.sort(key=lambda i: i.start)
+    return out
+
+
