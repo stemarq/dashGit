@@ -90,3 +90,44 @@ async def _sync_boards(gl: GitLabClient, project_ref: str | int, project_id: int
     return len(rows)
 
 
+async def _sync_commits(
+    gl: GitLabClient, project_ref: str | int, project_id: int, since: str | None
+) -> int:
+    """Commits de todos os branches.
+
+    O `since` do GitLab e inclusivo e compara pela data do commit, que pode
+    ser reescrita por rebase — entao o import volta um pouco no tempo e conta
+    com o INSERT OR REPLACE para nao duplicar.
+    """
+    if since:
+        overlap = parse_iso(since) - timedelta(days=1)
+        since = overlap.isoformat()
+
+    rows: list[tuple[Any, ...]] = []
+    for c in await gl.commits(project_ref, since=since):
+        stats = c.get("stats") or {}
+        rows.append((
+            project_id,
+            c["id"],
+            c.get("short_id"),
+            c.get("title"),
+            c.get("author_name"),
+            (c.get("author_email") or "").lower(),
+            c.get("committed_date") or c.get("created_at"),
+            stats.get("additions") or 0,
+            stats.get("deletions") or 0,
+            1 if len(c.get("parent_ids") or []) > 1 else 0,
+            c.get("web_url"),
+        ))
+
+    with session() as conn:
+        conn.executemany(
+            "INSERT OR REPLACE INTO commits (project_id, id, short_id, title, author_name,"
+            " author_email, committed_at, additions, deletions, is_merge, web_url)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            rows,
+        )
+    log.info("projeto %s: %d commits importados", project_id, len(rows))
+    return len(rows)
+
+
