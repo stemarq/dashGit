@@ -216,3 +216,18 @@ def parse_ts(value: str | None) -> datetime | None:
 
 
 @dataclass
+class Interval:
+    label: str
+    start: datetime
+    end: datetime | None      # None = ainda esta na coluna
+    moved_by: str | None
+
+    @property
+    def closed(self) -> bool:
+        return self.end is not None
+
+    def seconds(self, now: datetime) -> float:
+        return max(0.0, ((self.end or now) - self.start).total_seconds())
+
+
+@dataclass
