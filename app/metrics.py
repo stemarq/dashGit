@@ -122,3 +122,27 @@ def scope_mode() -> str:
     return mode if mode in ("assigned", "touched") else "assigned"
 
 
+def counts_for_person(
+    interval: "Interval", timeline: "IssueTimeline", review: str | None = None
+) -> bool:
+    """Se este intervalo entra no tempo de alguma pessoa.
+
+    Em `assigned`, so conta o que a pessoa fez nas issues atribuidas a ela —
+    etapa feita numa issue alheia fica de fora do tempo individual (continua
+    no total do projeto e no gargalo, que sao contas por coluna).
+
+    A revisao e a excecao: ela e *sempre* trabalho no card de outra pessoa,
+    entao o escopo a apagaria por completo. Revisou, acumulou.
+    """
+    if scope_mode() != "assigned":
+        return True
+    if review is not None and interval.label == review:
+        return True
+    return interval_owner(interval, timeline) == timeline.assignee
+
+
+def excluded_labels() -> set[str]:
+    """Colunas fora de qualquer conta de tempo (ex.: Backlog)."""
+    return {name.lower() for name in get_settings().excluded_list}
+
+
