@@ -148,3 +148,106 @@ async def _fetch_events(
     return out
 
 
+def _persist(
+    meta: dict[str, Any],
+    issues: list[dict[str, Any]],
+    events: dict[int, list[dict[str, Any]]],
+    milestones: list[dict[str, Any]],
+    synced_at: str,
+) -> None:
+    project_id = meta["id"]
+    with session() as conn:
+        conn.execute(
+            "INSERT INTO projects (id, path, name, web_url, synced_at) VALUES (?,?,?,?,?)"
+            " ON CONFLICT(id) DO UPDATE SET path=excluded.path, name=excluded.name,"
+            " web_url=excluded.web_url, synced_at=excluded.synced_at",
+            (
+                project_id,
+                meta["path_with_namespace"],
+                meta.get("name"),
+                meta.get("web_url"),
+                synced_at,
+            ),
+        )
+
+        for milestone in milestones:
+            conn.execute(
+                "INSERT INTO milestones (project_id, id, iid, title, state, start_date,"
+                " due_date, web_url) VALUES (?,?,?,?,?,?,?,?)"
+                " ON CONFLICT(project_id, id) DO UPDATE SET title=excluded.title,"
+                " state=excluded.state, start_date=excluded.start_date,"
+                " due_date=excluded.due_date, web_url=excluded.web_url",
+                (
+                    project_id,
+                    milestone["id"],
+                    milestone.get("iid"),
+                    milestone.get("title"),
+                    milestone.get("state"),
+                    milestone.get("start_date"),
+                    milestone.get("due_date"),
+                    milestone.get("web_url"),
+                ),
+            )
+
+        for issue in issues:
+            author_id, author_name = _user(issue.get("author"))
+            assignee_id, assignee_name = _user(issue.get("assignee"))
+            issue_milestone = issue.get("milestone") or {}
+            conn.execute(
+                "INSERT INTO issues (project_id, iid, id, title, state, created_at, closed_at,"
+                " updated_at, author_id, author_name, assignee_id, assignee_name, milestone,"
+                " milestone_id, web_url) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                " ON CONFLICT(project_id, iid) DO UPDATE SET title=excluded.title,"
+                " state=excluded.state, closed_at=excluded.closed_at,"
+                " updated_at=excluded.updated_at, assignee_id=excluded.assignee_id,"
+                " assignee_name=excluded.assignee_name, milestone=excluded.milestone,"
+                " milestone_id=excluded.milestone_id",
+                (
+                    project_id,
+                    issue["iid"],
+                    issue.get("id"),
+                    issue.get("title"),
+                    issue.get("state"),
+                    issue.get("created_at"),
+                    issue.get("closed_at"),
+                    issue.get("updated_at"),
+                    author_id,
+                    author_name,
+                    assignee_id,
+                    assignee_name,
+                    issue_milestone.get("title"),
+                    issue_milestone.get("id"),
+                    issue.get("web_url"),
+                ),
+            )
+
+        for iid, evts in events.items():
+            conn.execute(
+                "DELETE FROM label_events WHERE project_id = ? AND issue_iid = ?",
+                (project_id, iid),
+            )
+            for ev in evts:
+                label = (ev.get("label") or {}).get("name")
+                user_id, user_name = _user(ev.get("user"))
+                conn.execute(
+                    "INSERT OR REPLACE INTO label_events (id, project_id, issue_iid, action,"
+                    " label_name, user_id, user_name, created_at) VALUES (?,?,?,?,?,?,?,?)",
+                    (
+                        ev["id"],
+                        project_id,
+                        iid,
+                        ev.get("action"),
+                        label,
+                        user_id,
+                        user_name,
+                        ev.get("created_at"),
+                    ),
+                )
+
+        conn.execute(
+            "INSERT INTO sync_state (project_id, last_synced_at, commits_synced_at)"
+            " VALUES (?,?,?) ON CONFLICT(project_id) DO UPDATE SET"
+            " last_synced_at=excluded.last_synced_at,"
+            " commits_synced_at=excluded.commits_synced_at",
+            (project_id, synced_at, synced_at),
+        )
