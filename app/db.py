@@ -129,3 +129,24 @@ def session() -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
+# Colunas acrescentadas depois da primeira versao do schema. O cache e
+# descartavel, mas re-sincronizar um projeto grande custa caro, entao vale
+# migrar em vez de pedir para o usuario apagar o .db.
+MIGRATIONS: dict[str, list[tuple[str, str]]] = {
+    "issues": [("milestone_id", "INTEGER")],
+    "sync_state": [("commits_synced_at", "TEXT")],
+}
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    for table, columns in MIGRATIONS.items():
+        existing = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+        for name, ddl in columns:
+            if name not in existing:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}")
+
+
+def init_db() -> None:
+    with session() as conn:
+        conn.executescript(SCHEMA)
+        _migrate(conn)
