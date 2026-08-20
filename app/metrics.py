@@ -32,3 +32,24 @@ def attribution_mode() -> str:
     return mode if mode in ("mover", "assignee") else "mover"
 
 
+def interval_owner(interval: "Interval", timeline: "IssueTimeline") -> str:
+    """De quem e o tempo deste intervalo.
+
+    No fluxo tipico o executor move o card para Doing e o revisor move para
+    Review — entao quem aplicou a label da coluna e quem fez aquela etapa.
+    Sem essa informacao (evento antigo, label posta por automacao), cai para
+    o responsavel da issue.
+    """
+    if attribution_mode() == "mover" and interval.moved_by:
+        return interval.moved_by
+    return timeline.assignee
+
+
+def queue_labels() -> set[str]:
+    """Colunas de espera: contam no gargalo, mas nao no tempo de ninguem."""
+    return {name.lower() for name in get_settings().queue_list}
+
+
+QUEUE_UNCLAIMED = "(fila sem dono)"
+
+
