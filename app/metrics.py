@@ -204,3 +204,15 @@ def review_intervals(
             if i.label == label and interval_owner(i, timeline) == name]
 
 
+def parse_ts(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    text = value.replace("Z", "+00:00")
+    try:
+        dt = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+@dataclass
