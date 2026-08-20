@@ -91,3 +91,34 @@ def person_labels(project_id: int) -> dict[str, str]:
     return out
 
 
+def queue_debts(
+    timeline: "IssueTimeline", queues: set[str], persons: dict[str, str]
+) -> list[tuple[str, "Interval"]]:
+    """De quem e a culpa por cada intervalo de fila.
+
+    O card parado em "Waiting Review" esperava um revisor. Quem acabou
+    pegando a revisao e quem o deixou esperando — a espera e demerito dele,
+    nao de quem terminou o trabalho e colocou na fila. Card que ainda espera
+    nao tem revisor conhecido: cai para a label de nome, se houver.
+    """
+    out: list[tuple[str, Interval]] = []
+    for i, itv in enumerate(timeline.intervals):
+        if itv.label.lower() not in queues:
+            continue
+        following = timeline.intervals[i + 1] if i + 1 < len(timeline.intervals) else None
+        if following is not None:
+            debtor = interval_owner(following, timeline)
+        else:
+            debtor = next(
+                (persons[tag.lower()] for tag in timeline.tags if tag.lower() in persons),
+                QUEUE_UNCLAIMED,
+            )
+        out.append((debtor, itv))
+    return out
+
+
+def scope_mode() -> str:
+    mode = get_settings().scope.strip().lower()
+    return mode if mode in ("assigned", "touched") else "assigned"
+
+
