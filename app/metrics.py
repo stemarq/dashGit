@@ -190,3 +190,17 @@ def review_label(project_id: int, available: Iterable[str] | None = None) -> str
     return None
 
 
+def review_intervals(
+    timeline: "IssueTimeline", name: str, label: str | None
+) -> list["Interval"]:
+    """Intervalos de revisao feitos por esta pessoa neste card.
+
+    De proposito sem `counts_for_person`: revisar e trabalhar no card de
+    outra pessoa, entao o SCOPE zeraria justamente o que se quer medir.
+    """
+    if not label:
+        return []
+    return [i for i in timeline.intervals
+            if i.label == label and interval_owner(i, timeline) == name]
+
+
