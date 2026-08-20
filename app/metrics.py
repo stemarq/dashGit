@@ -246,3 +246,15 @@ class IssueTimeline:
     tags: list[str] = field(default_factory=list)   # labels que nao sao coluna
 
 
+def resolve_project_id(project: str | int | None) -> int | None:
+    """Aceita id numerico, `grupo/projeto` ou None (= primeiro projeto sincronizado)."""
+    with session() as conn:
+        if project is None:
+            row = conn.execute("SELECT id FROM projects ORDER BY id LIMIT 1").fetchone()
+        elif str(project).isdigit():
+            row = conn.execute("SELECT id FROM projects WHERE id = ?", (int(project),)).fetchone()
+        else:
+            row = conn.execute("SELECT id FROM projects WHERE path = ?", (str(project),)).fetchone()
+    return row["id"] if row else None
+
+
