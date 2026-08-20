@@ -69,3 +69,24 @@ async def sync_project(project: str | int, full: bool = False) -> dict[str, Any]
     }
 
 
+async def _sync_boards(gl: GitLabClient, project_ref: str | int, project_id: int) -> int:
+    rows: list[tuple[Any, ...]] = []
+    for board in await gl.boards(project_ref):
+        lists = await gl.board_lists(project_ref, board["id"])
+        for lst in lists:
+            label = (lst.get("label") or {}).get("name")
+            if not label:
+                continue  # listas de assignee/milestone nao viram coluna de label
+            rows.append(
+                (project_id, board["id"], board.get("name"), lst["id"], lst.get("position"), label)
+            )
+    with session() as conn:
+        conn.execute("DELETE FROM board_lists WHERE project_id = ?", (project_id,))
+        conn.executemany(
+            "INSERT INTO board_lists (project_id, board_id, board_name, list_id, position,"
+            " label_name) VALUES (?,?,?,?,?,?)",
+            rows,
+        )
+    return len(rows)
+
+
