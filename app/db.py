@@ -119,3 +119,13 @@ def connect() -> sqlite3.Connection:
     return conn
 
 
+@contextmanager
+def session() -> Iterator[sqlite3.Connection]:
+    conn = connect()
+    try:
+        yield conn
+        conn.commit()
+    finally:
+        conn.close()
+
+
