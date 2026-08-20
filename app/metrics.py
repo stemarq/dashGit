@@ -288,3 +288,72 @@ def board_positions(project_id: int) -> dict[str, int]:
     return {r["label_name"].lower(): (r["pos"] if r["pos"] is not None else 0) for r in rows}
 
 
+def build_timelines(
+    project_id: int,
+    labels: Iterable[str] | None = None,
+    state: str | None = None,
+    milestone: str | None = None,
+) -> list[IssueTimeline]:
+    now = datetime.now(timezone.utc)
+    wanted = {name.lower() for name in labels} if labels else None
+    # pedir a coluna explicitamente ganha da exclusao global
+    hidden = excluded_labels() - (wanted or set())
+    positions = board_positions(project_id)
+
+    # So label que e coluna do board vira tempo. Um card costuma carregar
+    # tambem etiquetas de conteudo ("DOCUMENTATION", "ART 1"); contar cada
+    # uma como etapa multiplicaria o mesmo periodo por quantas houvesse.
+    tracked: set[str] | None = wanted if wanted is not None else set(positions) - hidden
+    # projeto sem board sincronizado: nao da para distinguir coluna de
+    # etiqueta, entao conta todas em vez de zerar o dashboard
+    if tracked is not None and not tracked:
+        tracked = None
+
+    with session() as conn:
+        issue_sql = "SELECT * FROM issues WHERE project_id = ?"
+        params: list[Any] = [project_id]
+        if state in ("opened", "closed"):
+            issue_sql += " AND state = ?"
+            params.append(state)
+        if milestone == NO_MILESTONE:
+            issue_sql += " AND (milestone IS NULL OR milestone = '')"
+        elif milestone:
+            issue_sql += " AND milestone = ?"
+            params.append(milestone)
+        issues = conn.execute(issue_sql, params).fetchall()
+
+        events = conn.execute(
+            "SELECT issue_iid, action, label_name, user_name, created_at FROM label_events"
+            " WHERE project_id = ? ORDER BY created_at, id",
+            (project_id,),
+        ).fetchall()
+
+    by_issue: dict[int, list[Any]] = defaultdict(list)
+    for ev in events:
+        by_issue[ev["issue_iid"]].append(ev)
+
+    timelines: list[IssueTimeline] = []
+    for issue in issues:
+        tl = IssueTimeline(
+            project_id=project_id,
+            iid=issue["iid"],
+            title=issue["title"] or "",
+            state=issue["state"] or "",
+            assignee=issue["assignee_name"] or UNASSIGNED,
+            author=issue["author_name"] or UNASSIGNED,
+            milestone=issue["milestone"] or NO_MILESTONE,
+            web_url=issue["web_url"] or "",
+            created_at=parse_ts(issue["created_at"]),
+            closed_at=parse_ts(issue["closed_at"]),
+        )
+        issue_events = by_issue.get(issue["iid"], [])
+        tl.intervals = _intervals(issue_events, tracked, hidden, tl.closed_at)
+        if positions:
+            # so da para arbitrar sobreposicao quem conhece a ordem do board;
+            # sem board sincronizado o certo e nao inventar um vencedor
+            tl.intervals = _resolve_overlaps(tl.intervals, positions, now)
+        tl.tags = _open_tags(issue_events, tracked)
+        timelines.append(tl)
+    return timelines
+
+
