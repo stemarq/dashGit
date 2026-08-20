@@ -370,3 +370,39 @@ def _open_tags(events: list[Any], tracked: set[str] | None) -> list[str]:
     return sorted(name for name, on in applied.items() if on)
 
 
+def _resolve_overlaps(
+    intervals: list[Interval], positions: dict[str, int], now: datetime
+) -> list[Interval]:
+    """Da a cada instante uma coluna so.
+
+    Nada impede um card de carregar 'Doing' e 'Review' ao mesmo tempo. Somar
+    os dois periodos contaria a mesma hora duas vezes, e o total da pessoa
+    passaria do tempo de relogio. Aqui cada instante fica com a coluna mais
+    avancada do board — a mesma que o GitLab mostra no card.
+    """
+    if len(intervals) < 2:
+        return intervals
+
+    edges = sorted({t for i in intervals for t in (i.start, i.end or now)})
+    pieces: list[tuple[Interval, datetime, datetime]] = []
+    for left, right in zip(edges, edges[1:]):
+        active = [i for i in intervals if i.start <= left and (i.end or now) >= right]
+        if not active:
+            continue
+        winner = max(active, key=lambda i: (positions.get(i.label.lower(), -1), i.start))
+        pieces.append((winner, left, right))
+
+    out: list[Interval] = []
+    for winner, left, right in pieces:
+        if out and out[-1].label == winner.label and out[-1].end == left:
+            out[-1].end = right
+        else:
+            out.append(Interval(winner.label, left, right, winner.moved_by))
+    # o ultimo pedaco herda a "abertura" de quem ainda esta na coluna
+    if out and out[-1].end == now:
+        still_open = any(i.end is None and i.label == out[-1].label for i in intervals)
+        if still_open:
+            out[-1].end = None
+    return out
+
+
