@@ -276,3 +276,15 @@ def board_labels(
     return [name for name in names if name.lower() not in hidden]
 
 
+def board_positions(project_id: int) -> dict[str, int]:
+    """Label da coluna (minuscula) -> posicao no board. Serve para saber o
+    que e coluna e qual coluna e a mais avancada."""
+    with session() as conn:
+        rows = conn.execute(
+            "SELECT label_name, MIN(position) AS pos FROM board_lists"
+            " WHERE project_id = ? GROUP BY label_name",
+            (project_id,),
+        ).fetchall()
+    return {r["label_name"].lower(): (r["pos"] if r["pos"] is not None else 0) for r in rows}
+
+
