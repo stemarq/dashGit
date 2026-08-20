@@ -146,3 +146,23 @@ def excluded_labels() -> set[str]:
     return {name.lower() for name in get_settings().excluded_list}
 
 
+def focus_label(project_id: int, available: Iterable[str] | None = None) -> str | None:
+    """A coluna que representa trabalho acontecendo.
+
+    Prioridade: `FOCUS_LABEL` do .env -> heuristica pelo nome -> primeira
+    coluna do board que nao esta excluida.
+    """
+    labels = list(available) if available is not None else board_labels(project_id)
+    if not labels:
+        return None
+    configured = get_settings().focus_label.strip()
+    if configured:
+        for name in labels:
+            if name.lower() == configured.lower():
+                return name
+    for name in labels:
+        if any(token in name.lower() for token in FOCUS_PATTERN):
+            return name
+    return labels[0]
+
+
