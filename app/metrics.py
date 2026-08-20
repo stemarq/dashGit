@@ -53,3 +53,41 @@ def queue_labels() -> set[str]:
 QUEUE_UNCLAIMED = "(fila sem dono)"
 
 
+def person_labels(project_id: int) -> dict[str, str]:
+    """Labels que nomeiam alguem do time -> nome canonico da pessoa.
+
+    Alguns times marcam o revisor com uma label de nome em vez do campo de
+    responsavel. Detecta comparando as labels com os nomes que ja aparecem
+    nos eventos e nos responsaveis.
+    """
+    with session() as conn:
+        members = {r[0] for r in conn.execute(
+            "SELECT DISTINCT user_name FROM label_events"
+            " WHERE project_id = ? AND user_name IS NOT NULL", (project_id,))}
+        members |= {r[0] for r in conn.execute(
+            "SELECT DISTINCT assignee_name FROM issues"
+            " WHERE project_id = ? AND assignee_name IS NOT NULL", (project_id,))}
+        labels = {r[0] for r in conn.execute(
+            "SELECT DISTINCT label_name FROM label_events"
+            " WHERE project_id = ? AND label_name IS NOT NULL", (project_id,))}
+
+    board = {name.lower() for name in board_labels(project_id, include_excluded=True)}
+    full = {m.lower(): m for m in members}
+    by_first: dict[str, str] = {}
+    for member in members:
+        parts = member.split()
+        if parts:
+            by_first.setdefault(parts[0].lower(), member)
+
+    out: dict[str, str] = {}
+    for label in labels:
+        key = label.lower()
+        if key in board:
+            continue
+        if key in full:
+            out[key] = full[key]
+        elif len(label.split()) <= 2 and label.split()[0].lower() in by_first:
+            out[key] = by_first[label.split()[0].lower()]
+    return out
+
+
