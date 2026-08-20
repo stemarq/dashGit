@@ -231,3 +231,18 @@ class Interval:
 
 
 @dataclass
+class IssueTimeline:
+    project_id: int
+    iid: int
+    title: str
+    state: str
+    assignee: str
+    author: str
+    milestone: str
+    web_url: str
+    created_at: datetime | None
+    closed_at: datetime | None
+    intervals: list[Interval] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)   # labels que nao sao coluna
+
+
