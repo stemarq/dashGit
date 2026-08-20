@@ -258,3 +258,21 @@ def resolve_project_id(project: str | int | None) -> int | None:
     return row["id"] if row else None
 
 
+def board_labels(
+    project_id: int, board_id: int | None = None, include_excluded: bool = False
+) -> list[str]:
+    """Colunas do board, na ordem em que aparecem, sem as excluidas."""
+    query = "SELECT label_name, MIN(position) AS pos FROM board_lists WHERE project_id = ?"
+    params: list[Any] = [project_id]
+    if board_id is not None:
+        query += " AND board_id = ?"
+        params.append(board_id)
+    query += " GROUP BY label_name ORDER BY pos"
+    with session() as conn:
+        names = [r["label_name"] for r in conn.execute(query, params).fetchall()]
+    if include_excluded:
+        return names
+    hidden = excluded_labels()
+    return [name for name in names if name.lower() not in hidden]
+
+
