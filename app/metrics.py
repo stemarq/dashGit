@@ -166,3 +166,27 @@ def focus_label(project_id: int, available: Iterable[str] | None = None) -> str 
     return labels[0]
 
 
+def review_label(project_id: int, available: Iterable[str] | None = None) -> str | None:
+    """A coluna em que alguem revisa o trabalho de outra pessoa.
+
+    Prioridade: `REVIEW_LABEL` do .env -> heuristica pelo nome. Nunca uma
+    coluna de fila ("Waiting Review" e espera, nao revisao) nem uma excluida.
+    """
+    labels = list(available) if available is not None else board_labels(project_id)
+    out = [name for name in labels
+           if name.lower() not in queue_labels() and name.lower() not in excluded_labels()]
+    if not out:
+        return None
+    configured = get_settings().review_label.strip()
+    if configured:
+        for name in out:
+            if name.lower() == configured.lower():
+                return name
+        return None
+    focus = focus_label(project_id, labels)
+    for name in out:
+        if name != focus and any(token in name.lower() for token in REVIEW_PATTERN):
+            return name
+    return None
+
+
