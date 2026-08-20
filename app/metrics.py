@@ -357,3 +357,16 @@ def build_timelines(
     return timelines
 
 
+def _open_tags(events: list[Any], tracked: set[str] | None) -> list[str]:
+    """Etiquetas que nao sao coluna e continuam aplicadas na issue."""
+    if tracked is None:
+        return []
+    applied: dict[str, bool] = {}
+    for ev in events:
+        label = ev["label_name"]
+        if not label or label.lower() in tracked:
+            continue
+        applied[label] = ev["action"] == "add"
+    return sorted(name for name, on in applied.items() if on)
+
+
