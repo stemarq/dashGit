@@ -144,3 +144,53 @@ def _rows(
     return rows
 
 
+def identities(project_id: int) -> list[dict[str, Any]]:
+    """Autores de commit agrupados por pessoa.
+
+    Um mesmo autor costuma aparecer com varios e-mails (maquina pessoal, web
+    IDE, GitHub noreply). Agrupa pelo nome normalizado e lista os e-mails para
+    o time conferir se alguem ficou dividido em dois.
+    """
+    with session() as conn:
+        rows = conn.execute(
+            "SELECT author_name, author_email, COUNT(*) AS commits,"
+            " MIN(committed_at) AS first_at, MAX(committed_at) AS last_at"
+            " FROM commits WHERE project_id = ? AND is_merge = 0"
+            " GROUP BY author_name, author_email",
+            (project_id,),
+        ).fetchall()
+
+    grouped: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        name = (r["author_name"] or "?").strip()
+        bucket = grouped.setdefault(name.lower(), {
+            "author": name, "commits": 0, "emails": set(),
+            "first_at": r["first_at"], "last_at": r["last_at"],
+        })
+        bucket["commits"] += r["commits"]
+        if r["author_email"]:
+            bucket["emails"].add(r["author_email"])
+        bucket["first_at"] = min(bucket["first_at"], r["first_at"] or bucket["first_at"])
+        bucket["last_at"] = max(bucket["last_at"], r["last_at"] or bucket["last_at"])
+
+    out = [{**b, "emails": sorted(b["emails"])} for b in grouped.values()]
+    out.sort(key=lambda a: -a["commits"])
+    return out
+
+
+# particulas de nome nao identificam ninguem
+STOPWORDS = {"dos", "das", "der", "van", "von"}
+
+
+def _fold(text: str) -> str:
+    """Sem acento e em minusculas: 'Brandao' e 'Brandão' sao a mesma pessoa."""
+    nfkd = unicodedata.normalize("NFKD", text.lower())
+    return "".join(c for c in nfkd if not unicodedata.combining(c))
+
+
+def _tokens(text: str) -> set[str]:
+    """Pedacos uteis de um nome ou de um login de e-mail."""
+    parts = re.split(r"[.\s_+-]+", _fold(text).strip())
+    return {p for p in parts if len(p) > 2 and p not in STOPWORDS}
+
+
