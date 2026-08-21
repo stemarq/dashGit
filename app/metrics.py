@@ -711,3 +711,71 @@ def column_report(
     return {"project_id": project_id, "milestone": milestone, "columns": columns}
 
 
+def issue_report(
+    project_id: int,
+    labels: Iterable[str] | None = None,
+    state: str | None = None,
+    milestone: str | None = None,
+    sort: str = "focus",
+) -> dict[str, Any]:
+    """Detalhe por issue - o drill-down de qualquer numero agregado acima.
+
+    Por padrao ranqueia pelo tempo na coluna de trabalho (`focus`), nao pelo
+    lead time: uma issue parada meses no Backlog nao e uma issue "demorada",
+    e o Backlog nem entra na conta.
+    """
+    now = datetime.now(timezone.utc)
+    focus = focus_label(project_id, labels)
+    queues = queue_labels()
+    persons = person_labels(project_id) if queues else {}
+    out = []
+    for tl in build_timelines(project_id, list(labels) if labels else None, state, milestone):
+        if not tl.intervals:
+            continue
+        by_label: dict[str, float] = defaultdict(float)
+        for itv in tl.intervals:
+            by_label[itv.label] += itv.seconds(now)
+        lead = ((tl.closed_at or now) - tl.created_at).total_seconds() if tl.created_at else 0.0
+        focus_seconds = by_label.get(focus, 0.0) if focus else 0.0
+        out.append(
+            {
+                "iid": tl.iid,
+                "title": tl.title,
+                "state": tl.state,
+                "assignee": tl.assignee,
+                "author": tl.author,
+                "milestone": tl.milestone,
+                "tags": tl.tags,
+                "web_url": tl.web_url,
+                "lead_time_hours": round(lead / 3600, 2),
+                "focus_hours": round(focus_seconds / 3600, 2),
+                "working_hours": round(sum(by_label.values()) / 3600, 2),
+                "current_column": next(
+                    (i.label for i in reversed(tl.intervals) if not i.closed), None
+                ),
+                "time_by_column": {
+                    label: {"hours": round(sec / 3600, 2), "human": format_duration(sec)}
+                    for label, sec in sorted(by_label.items(), key=lambda x: -x[1])
+                },
+                "participants": issue_participants(tl, queues, persons, now),
+                "transitions": [
+                    {
+                        "label": i.label,
+                        "start": i.start.isoformat(),
+                        "end": i.end.isoformat() if i.end else None,
+                        "hours": round(i.seconds(now) / 3600, 2),
+                        "moved_by": i.moved_by,
+                        "owner": interval_owner(i, tl),
+                        "queue": i.label.lower() in queues,
+                    }
+                    for i in tl.intervals
+                ],
+            }
+        )
+    key = "lead_time_hours" if sort == "lead_time" else (
+        "working_hours" if sort == "working" or not focus else "focus_hours"
+    )
+    out.sort(key=lambda i: i[key], reverse=True)
+    return {"focus_label": focus, "sorted_by": key, "issues": out}
+
+
