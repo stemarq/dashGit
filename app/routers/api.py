@@ -91,3 +91,47 @@ def projects() -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+@router.get("/boards")
+def boards(project: str | None = None) -> dict[str, Any]:
+    """Colunas do board. `excluded` sao as que ficam fora das contas de tempo."""
+    project_id = _resolve(project)
+    with session() as conn:
+        rows = conn.execute(
+            "SELECT board_id, board_name, list_id, position, label_name FROM board_lists"
+            " WHERE project_id = ? ORDER BY board_id, position",
+            (project_id,),
+        ).fetchall()
+    hidden = metrics.excluded_labels()
+    grouped: dict[int, dict[str, Any]] = {}
+    for row in rows:
+        board = grouped.setdefault(
+            row["board_id"],
+            {"board_id": row["board_id"], "name": row["board_name"], "columns": []},
+        )
+        board["columns"].append({
+            "list_id": row["list_id"],
+            "label": row["label_name"],
+            "excluded": row["label_name"].lower() in hidden,
+        })
+    return {
+        "project_id": project_id,
+        "excluded_labels": get_settings().excluded_list,
+        "focus_label": metrics.focus_label(project_id),
+        "review_label": metrics.review_label(project_id),
+        # sem colunas conhecidas, toda label vira etapa e o total pode passar
+        # do tempo de relogio — o cliente avisa em vez de mentir calado
+        "columns_known": bool(rows),
+        "attribution": metrics.attribution_mode(),
+        "queue_labels": get_settings().queue_list,
+        "scope": metrics.scope_mode(),
+        "boards": list(grouped.values()),
+    }
+
+
+@router.get("/milestones")
+def milestones(project: str | None = None) -> dict[str, Any]:
+    """Sprints disponiveis no cache, com contagem de issues."""
+    project_id = _resolve(project)
+    return {"project_id": project_id, "milestones": metrics.milestones(project_id)}
+
+
