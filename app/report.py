@@ -180,3 +180,44 @@ def _sprint_commits(project_id: int, milestone: str) -> list[dict[str, Any]]:
     return out
 
 
+def _convention_by_person(
+    project_id: int, commits: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Aderencia a convencao de cada pessoa dentro deste recorte de commits.
+
+    Agrupa por membro do GitLab, nao por assinatura de git: quem commita como
+    `lucas.delmirio` e como "Lucas Delmirio da Silva" e uma pessoa so, e o
+    resumo e por membro do time.
+    """
+    with session() as conn:
+        members = [r[0] for r in conn.execute(
+            "SELECT DISTINCT user_name FROM label_events"
+            " WHERE project_id = ? AND user_name IS NOT NULL", (project_id,))]
+
+    por_pessoa: dict[str, dict[str, Any]] = {}
+    for c in commits:
+        autor = (c["author"] or "?").strip()
+        nome = commit_metrics.match_member(autor, members) or autor
+        bucket = por_pessoa.setdefault(nome, {
+            "person": nome, "member": nome in members,
+            "commits": 0, "ok": 0, "reasons": defaultdict(int),
+        })
+        bucket["commits"] += 1
+        if not c["convention"]:
+            bucket["ok"] += 1
+        for motivo in c["convention"]:
+            bucket["reasons"][motivo] += 1
+
+    linhas = [
+        {
+            **b,
+            "off": b["commits"] - b["ok"],
+            "pct": round(b["ok"] / b["commits"] * 100, 1) if b["commits"] else 0.0,
+            "reasons": dict(sorted(b["reasons"].items(), key=lambda x: -x[1])),
+        }
+        for b in por_pessoa.values()
+    ]
+    linhas.sort(key=lambda r: (r["pct"], -r["commits"]))
+    return linhas
+
+
