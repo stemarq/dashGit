@@ -289,3 +289,13 @@ CONVENTION_PATTERN = re.compile(r"^(?P<type>[a-z]+)\((?P<ref>#\d+)\): (?P<desc>\
 # "esqueceu um espaco", que sao problemas de tamanho bem diferente
 _LOOSE = re.compile(r"^[a-z]+\s*\(\s*#\d+\s*\)\s*:\s*\S")
 
+REASON_LABELS = {
+    "vazio": "mensagem vazia",
+    "acento": "tem acentuacao",
+    "espaco": "espacamento fora do padrao",
+    "tipo": "tipo fora da lista",
+    "sem_issue": "nao referencia a issue",
+    "formato": "fora do formato tipo(#issue): descricao",
+}
+
+
