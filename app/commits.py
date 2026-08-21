@@ -194,3 +194,34 @@ def _tokens(text: str) -> set[str]:
     return {p for p in parts if len(p) > 2 and p not in STOPWORDS}
 
 
+def match_member(author: str, members: Iterable[str], email: str | None = None) -> str | None:
+    """Liga o nome do git ao usuario do GitLab.
+
+    Nome de commit vem em todo formato: "Tiago", "lucas.delmirio",
+    "Guilherme Maia" para um "Jose Guilherme Goncalves Maia". Compara os
+    pedacos do nome (e do login do e-mail) e exige que a melhor combinacao
+    seja unica, para nao chutar entre dois homonimos.
+    """
+    nome = _tokens(author)
+    alvo = set(nome)
+    if email and "@" in email:
+        alvo |= _tokens(email.split("@")[0])
+    if not alvo:
+        return None
+
+    pontos = [(len(alvo & _tokens(m)), m) for m in members]
+    if not pontos:
+        return None
+    melhor = max(p for p, _ in pontos)
+    if melhor == 0:
+        return None
+    empatados = [m for p, m in pontos if p == melhor]
+    if len(empatados) > 1:
+        return None                  # empate: melhor nao identificar que chutar
+    # Um pedaco so de nome vale quando o autor assina com um nome unico
+    # ("Tiago"). Se ele assina com nome completo, um unico pedaco em comum
+    # costuma ser sobrenome corriqueiro — "Rodrigues" nao faz de duas pessoas
+    # a mesma.
+    return empatados[0] if melhor >= 2 or len(nome) <= 1 else None
+
+
