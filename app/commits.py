@@ -299,3 +299,41 @@ REASON_LABELS = {
 }
 
 
+def check_title(title: str | None) -> list[str]:
+    """Motivos pelos quais esta mensagem foge da convencao. Vazio = segue."""
+    text = (title or "").strip()
+    if not text:
+        return ["vazio"]
+
+    reasons: list[str] = []
+    if _fold(text) != text.lower():
+        reasons.append("acento")
+
+    # a forma e conferida no texto normalizado, entao a caixa nao interfere:
+    # `Fix(#1): Corrige` tem a forma certa, e maiuscula agora e permitida
+    low = _fold(text)
+    match = CONVENTION_PATTERN.match(low)
+    if match:
+        if match.group("type") not in CONVENTION_TYPES:
+            reasons.append("tipo")
+        return reasons
+
+    if _LOOSE.match(low):
+        # tem tipo, issue e descricao — o que quebrou foi o espacamento
+        reasons.append("espaco")
+        tipo = low.split("(")[0].strip()
+        if tipo not in CONVENTION_TYPES:
+            reasons.append("tipo")
+    elif re.search(r"#\d+", low):
+        reasons.append("formato")
+    else:
+        reasons.append("sem_issue")
+    return reasons
+
+
+def issue_ref(title: str | None) -> int | None:
+    """A issue citada na mensagem, mesmo que o resto esteja fora do padrao."""
+    match = re.search(r"#(\d+)", title or "")
+    return int(match.group(1)) if match else None
+
+
