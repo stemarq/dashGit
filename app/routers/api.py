@@ -334,3 +334,22 @@ def report_sprints_html(
     )
 
 
+@router.get("/report/sprint")
+def report_sprint(
+    milestone: str = Query(..., description=MILESTONE_DESC),
+    project: str | None = None,
+    labels: str | None = None,
+) -> dict[str, Any]:
+    """Resumo de uma sprint: numeros, gargalo, pessoas, issues e commits.
+
+    O comparativo responde "estamos melhorando?"; este responde "o que
+    aconteceu nesta sprint?".
+    """
+    project_id = _resolve(project)
+    label_list = [x.strip() for x in labels.split(",")] if labels else None
+    data = sprint_report_builder.sprint_summary(project_id, milestone, label_list)
+    if not data:
+        raise HTTPException(404, f"Sprint '{milestone}' nao esta no cache deste projeto.")
+    return data
+
+
