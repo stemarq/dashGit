@@ -50,3 +50,17 @@ def member_authors(project_id: int) -> set[str]:
     }
 
 
+def split_members(project_id: int, rows: list[Any]) -> tuple[list[Any], list[Any]]:
+    """Separa os commits do time dos de fora. Nada e descartado calado."""
+    if get_settings().count_non_members:
+        return list(rows), []
+    do_time = member_authors(project_id)
+    # projeto sem board sincronizado: nao ha lista de membros para comparar, e
+    # excluir todo mundo zeraria a tela em vez de protege-la do ruido
+    if not do_time:
+        return list(rows), []
+    dentro = [r for r in rows if (r["author_name"] or "").lower() in do_time]
+    fora = [r for r in rows if (r["author_name"] or "").lower() not in do_time]
+    return dentro, fora
+
+
