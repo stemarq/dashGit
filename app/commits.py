@@ -28,3 +28,25 @@ def member_names(project_id: int) -> list[str]:
             " WHERE project_id = ? AND user_name IS NOT NULL", (project_id,))]
 
 
+def member_authors(project_id: int) -> set[str]:
+    """Assinaturas de git (em minusculas) que pertencem a alguem do time.
+
+    O bot do template e as contas de professor commitam no mesmo repositorio;
+    contar o que eles fazem como trabalho do time distorce ritmo, ranking e
+    aderencia — e a aderencia deles e sempre 0%, porque nem tentam seguir a
+    convencao do time.
+    """
+    membros = member_names(project_id)
+    if not membros:
+        return set()          # sem eventos de board nao da para saber quem e do time
+    with session() as conn:
+        assinaturas = conn.execute(
+            "SELECT DISTINCT author_name, author_email FROM commits WHERE project_id = ?",
+            (project_id,),
+        ).fetchall()
+    return {
+        r["author_name"].lower() for r in assinaturas
+        if r["author_name"] and match_member(r["author_name"], membros, r["author_email"])
+    }
+
+
