@@ -36,3 +36,14 @@ def _resolve(project: str | None) -> int:
     return project_id
 
 
+def _parse_since(since: str | None, days: int | None) -> datetime | None:
+    if since:
+        parsed = metrics.parse_ts(since)
+        if parsed is None:
+            raise HTTPException(400, f"Data invalida em 'since': {since}")
+        return parsed
+    if days:
+        return datetime.now(timezone.utc) - timedelta(days=days)
+    return None
+
+
