@@ -665,3 +665,49 @@ def contributor_report(
     }
 
 
+def column_report(
+    project_id: int,
+    labels: Iterable[str] | None = None,
+    milestone: str | None = None,
+) -> dict[str, Any]:
+    """Media/mediana de permanencia por coluna - util para achar gargalo."""
+    now = datetime.now(timezone.utc)
+    timelines = build_timelines(project_id, list(labels) if labels else None, None, milestone)
+    samples: dict[str, list[float]] = defaultdict(list)
+    wip: dict[str, int] = defaultdict(int)
+
+    for tl in timelines:
+        for itv in tl.intervals:
+            if itv.closed:
+                samples[itv.label].append(itv.seconds(now))
+            else:
+                wip[itv.label] += 1
+
+    def median(values: list[float]) -> float:
+        if not values:
+            return 0.0
+        ordered = sorted(values)
+        mid = len(ordered) // 2
+        return ordered[mid] if len(ordered) % 2 else (ordered[mid - 1] + ordered[mid]) / 2
+
+    keys = [name for name in board_labels(project_id) if name in samples or name in wip]
+    keys += [name for name in list(samples) + list(wip) if name not in keys]
+
+    columns = []
+    for label in keys:
+        values = samples[label]
+        avg = sum(values) / len(values) if values else 0.0
+        columns.append(
+            {
+                "label": label,
+                "completed_passes": len(values),
+                "wip": wip[label],
+                "avg_hours": round(avg / 3600, 2),
+                "median_hours": round(median(values) / 3600, 2),
+                "max_hours": round(max(values) / 3600, 2) if values else 0,
+                "avg_human": format_duration(avg) if values else "-",
+            }
+        )
+    return {"project_id": project_id, "milestone": milestone, "columns": columns}
+
+
