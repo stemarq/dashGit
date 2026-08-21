@@ -419,3 +419,18 @@ def convention_report(
     }
 
 
+def convention_by_issue(project_id: int, include_merges: bool = False) -> dict[int, list[bool]]:
+    """iid da issue citada -> lista de "segue a convencao?" de cada commit.
+
+    Serve para levar a aderencia para o recorte de sprint: a sprint de um
+    commit e a da issue que ele cita, nao a data em que foi feito.
+    """
+    out: dict[int, list[bool]] = defaultdict(list)
+    dentro, _ = split_members(project_id, _rows(project_id, include_merges=include_merges))
+    for r in dentro:
+        iid = issue_ref(r["title"])
+        if iid is not None:
+            out[iid].append(not check_title(r["title"]))
+    return out
+
+
