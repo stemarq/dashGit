@@ -201,3 +201,26 @@ def milestone_metrics(
     return metrics.milestone_report(project_id, label_list, limit=limit)
 
 
+@router.get("/metrics/commits")
+def commits(
+    project: str | None = None,
+    since: str | None = None,
+    days: int | None = Query(None, ge=1, le=3650),
+    author: str | None = Query(None, description="Nome do autor no git, ou e-mail"),
+    include_merges: bool = Query(False, description="Inclui merge commits (fora por padrao:"
+                                " eles repetem as linhas dos commits que trazem)"),
+    only_off: bool = Query(False, description="Lista so os commits fora da convencao."
+                           " Recorta a listagem, nao os totais"),
+) -> dict[str, Any]:
+    """Volume, autores, ritmo diario e horario dos commits.
+
+    `author` aceita o nome do GitLab ou a assinatura do git: as identidades da
+    mesma pessoa entram juntas.
+    """
+    project_id = _resolve(project)
+    return commit_metrics.commit_report(
+        project_id, since=_parse_since(since, days), author=author,
+        include_merges=include_merges, only_off=only_off,
+    )
+
+
