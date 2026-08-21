@@ -524,3 +524,144 @@ def issue_participants(
     return rows
 
 
+def contributor_report(
+    project_id: int,
+    labels: Iterable[str] | None = None,
+    since: datetime | None = None,
+    until: datetime | None = None,
+    state: str | None = None,
+    milestone: str | None = None,
+) -> dict[str, Any]:
+    """Tempo por contribuidor x coluna, com totais e medias."""
+    now = datetime.now(timezone.utc)
+    until = until or now
+    label_filter = list(labels) if labels else None
+    timelines = build_timelines(project_id, label_filter, state, milestone)
+    label_order = label_filter or board_labels(project_id)
+
+    per_person: dict[str, dict[str, Any]] = {}
+    per_label_totals: dict[str, float] = defaultdict(float)
+
+    queues = queue_labels()
+    persons = person_labels(project_id) if queues else {}
+    review = review_label(project_id, label_filter)
+
+    def blank(owner: str) -> dict[str, Any]:
+        return {
+            "contributor": owner,
+            "issues": set(),
+            "closed_issues": set(),
+            "by_label": defaultdict(lambda: {"seconds": 0.0, "issues": set(), "open": 0}),
+            "total_seconds": 0.0,
+            "waiting_seconds": 0.0,
+            "waiting_issues": set(),
+            "review_seconds": 0.0,
+            "review_issues": set(),
+        }
+
+    for tl in timelines:
+        touched: set[str] = set()
+
+        # fila: a espera e demerito de quem deveria ter pego o card
+        for debtor, itv in queue_debts(tl, queues, persons):
+            start = max(itv.start, since) if since else itv.start
+            end = min(itv.end or now, until)
+            if end <= start:
+                continue
+            person = per_person.setdefault(debtor, blank(debtor))
+            person["waiting_seconds"] += (end - start).total_seconds()
+            person["waiting_issues"].add(tl.iid)
+
+        for itv in tl.intervals:
+            if itv.label.lower() in queues:
+                continue          # fila: o card espera, ninguem trabalha
+            start = max(itv.start, since) if since else itv.start
+            end = min(itv.end or now, until)
+            if end <= start:
+                continue
+            seconds = (end - start).total_seconds()
+
+            # cada etapa vai para quem a fez, nao para o dono da issue
+            # o total por coluna e do projeto e nao depende do escopo
+            per_label_totals[itv.label] += seconds
+
+            # revisao e contabilizada a parte, fora do SCOPE: quem revisa
+            # trabalha no card de outra pessoa, e some se seguir a regra
+            if review and itv.label == review:
+                reviewer = interval_owner(itv, tl)
+                person = per_person.setdefault(reviewer, blank(reviewer))
+                person["review_seconds"] += seconds
+                person["review_issues"].add(tl.iid)
+                touched.add(reviewer)
+
+            if not counts_for_person(itv, tl, review):
+                continue
+
+            owner = interval_owner(itv, tl)
+            person = per_person.setdefault(owner, blank(owner))
+            bucket = person["by_label"][itv.label]
+            bucket["seconds"] += seconds
+            bucket["issues"].add(tl.iid)
+            if not itv.closed:
+                bucket["open"] += 1
+            person["total_seconds"] += seconds
+            touched.add(owner)
+
+        for owner in touched:
+            per_person[owner]["issues"].add(tl.iid)
+            if tl.state == "closed":
+                per_person[owner]["closed_issues"].add(tl.iid)
+
+    rows = []
+    for person in per_person.values():
+        by_label = {}
+        for label, data in person["by_label"].items():
+            count = len(data["issues"])
+            by_label[label] = {
+                "seconds": round(data["seconds"], 1),
+                "hours": round(data["seconds"] / 3600, 2),
+                "human": format_duration(data["seconds"]),
+                "issues": count,
+                "still_in_column": data["open"],
+                "avg_hours_per_issue": round(data["seconds"] / 3600 / count, 2) if count else 0,
+            }
+        if not by_label and not person["waiting_seconds"] and not person["review_seconds"]:
+            continue
+        rows.append(
+            {
+                "contributor": person["contributor"],
+                "review_seconds": round(person["review_seconds"], 1),
+                "review_hours": round(person["review_seconds"] / 3600, 2),
+                "review_human": format_duration(person["review_seconds"]),
+                "review_issues": len(person["review_issues"]),
+                "waiting_seconds": round(person["waiting_seconds"], 1),
+                "waiting_hours": round(person["waiting_seconds"] / 3600, 2),
+                "waiting_human": format_duration(person["waiting_seconds"]),
+                "waiting_issues": len(person["waiting_issues"]),
+                "total_seconds": round(person["total_seconds"], 1),
+                "total_hours": round(person["total_seconds"] / 3600, 2),
+                "total_human": format_duration(person["total_seconds"]),
+                "issues": len(person["issues"]),
+                "closed_issues": len(person["closed_issues"]),
+                "by_label": by_label,
+            }
+        )
+    rows.sort(key=lambda r: r["total_seconds"], reverse=True)
+
+    columns = [name for name in label_order if name in per_label_totals]
+    columns += [name for name in per_label_totals if name not in columns]
+
+    return {
+        "project_id": project_id,
+        "columns": columns,
+        "review_label": review,
+        "milestone": milestone,
+        "window": {"since": since.isoformat() if since else None, "until": until.isoformat()},
+        "totals": {
+            label: {"hours": round(sec / 3600, 2), "human": format_duration(sec)}
+            for label, sec in sorted(per_label_totals.items(), key=lambda x: -x[1])
+        },
+        "contributors": rows,
+    }
+
+
