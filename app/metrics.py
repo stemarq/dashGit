@@ -454,3 +454,73 @@ def format_duration(seconds: float) -> str:
     return f"{minutes}m"
 
 
+def issue_participants(
+    timeline: "IssueTimeline",
+    queues: set[str],
+    persons: dict[str, str],
+    now: datetime,
+) -> list[dict[str, Any]]:
+    """Quem passou quanto tempo nesta issue, coluna por coluna.
+
+    E o unico lugar onde o SCOPE nao se aplica: numa issue interessa quem fez
+    cada etapa, inclusive o revisor de fora — cujo tempo, no modo `assigned`,
+    nao entra no total individual dele em lugar nenhum. Aqui ele aparece.
+    """
+    people: dict[str, dict[str, Any]] = {}
+
+    def bucket(name: str) -> dict[str, Any]:
+        return people.setdefault(name, {
+            "person": name,
+            "seconds": 0.0,
+            "by_column": defaultdict(lambda: {"seconds": 0.0, "stints": 0, "open": False}),
+            "waiting_seconds": 0.0,
+            "last_touch": None,
+        })
+
+    for itv in timeline.intervals:
+        if itv.label.lower() in queues:
+            continue          # fila: o card espera, ninguem trabalha
+        person = bucket(interval_owner(itv, timeline))
+        seconds = itv.seconds(now)
+        column = person["by_column"][itv.label]
+        column["seconds"] += seconds
+        column["stints"] += 1
+        column["open"] = column["open"] or not itv.closed
+        person["seconds"] += seconds
+        end = itv.end or now
+        if person["last_touch"] is None or end > person["last_touch"]:
+            person["last_touch"] = end
+
+    # a espera na fila nao e tempo de trabalho, mas e desta pessoa
+    for debtor, itv in queue_debts(timeline, queues, persons):
+        bucket(debtor)["waiting_seconds"] += itv.seconds(now)
+
+    total = sum(p["seconds"] for p in people.values())
+    rows = []
+    for person in people.values():
+        if not person["seconds"] and not person["waiting_seconds"]:
+            continue
+        rows.append({
+            "person": person["person"],
+            "hours": round(person["seconds"] / 3600, 2),
+            "human": format_duration(person["seconds"]),
+            "share": round(person["seconds"] / total * 100, 1) if total else 0.0,
+            "waiting_hours": round(person["waiting_seconds"] / 3600, 2),
+            "waiting_human": format_duration(person["waiting_seconds"]),
+            "last_touch": person["last_touch"].isoformat() if person["last_touch"] else None,
+            "by_column": {
+                label: {
+                    "hours": round(data["seconds"] / 3600, 2),
+                    "human": format_duration(data["seconds"]),
+                    "stints": data["stints"],
+                    "still_in_column": data["open"],
+                }
+                for label, data in sorted(
+                    person["by_column"].items(), key=lambda x: -x[1]["seconds"]
+                )
+            },
+        })
+    rows.sort(key=lambda r: (r["hours"], r["waiting_hours"]), reverse=True)
+    return rows
+
+
