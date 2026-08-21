@@ -273,3 +273,20 @@ def issues(
     }
 
 
+@router.get("/metrics/commit-convention")
+def commit_convention(
+    project: str | None = None,
+    since: str | None = None,
+    days: int | None = Query(None, ge=1, le=3650),
+    author: str | None = Query(None, description="Nome do autor no git, ou e-mail"),
+    include_merges: bool = Query(False, description="Merge commit tem mensagem gerada"
+                                " pelo GitLab: reprovar o time por ela nao mede nada"),
+) -> dict[str, Any]:
+    """Aderencia de cada pessoa a `tipo(#issue): descricao`, e o que quebra."""
+    project_id = _resolve(project)
+    return commit_metrics.convention_report(
+        project_id, since=_parse_since(since, days), author=author,
+        include_merges=include_merges,
+    )
+
+
