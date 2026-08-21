@@ -818,3 +818,87 @@ def milestones(project_id: int) -> list[dict[str, Any]]:
     return out
 
 
+def milestone_report(
+    project_id: int,
+    labels: Iterable[str] | None = None,
+    limit: int = 8,
+) -> dict[str, Any]:
+    """Uma linha por sprint: tempo por coluna, throughput e lead time.
+
+    A janela de tempo nao se aplica aqui de proposito — comparar sprints so
+    faz sentido sobre a duracao inteira de cada uma.
+    """
+    now = datetime.now(timezone.utc)
+    label_filter = list(labels) if labels else None
+    timelines = build_timelines(project_id, label_filter)
+    label_order = label_filter or board_labels(project_id)
+
+    known = {m["title"]: m for m in milestones(project_id)}
+    queues = queue_labels()
+    buckets: dict[str, dict[str, Any]] = {}
+    per_label_totals: dict[str, float] = defaultdict(float)
+
+    for tl in timelines:
+        bucket = buckets.setdefault(tl.milestone, {
+            "milestone": tl.milestone,
+            "by_label": defaultdict(float),
+            "total_seconds": 0.0,
+            "issues": 0,
+            "closed": 0,
+            "lead_seconds": [],
+            "contributors": set(),
+        })
+        bucket["issues"] += 1
+        if tl.state == "closed":
+            bucket["closed"] += 1
+        for itv in tl.intervals:
+            if itv.label.lower() in queues or not counts_for_person(itv, tl):
+                continue
+            owner = interval_owner(itv, tl)
+            if owner != UNASSIGNED:
+                bucket["contributors"].add(owner)
+        if tl.created_at:
+            bucket["lead_seconds"].append(((tl.closed_at or now) - tl.created_at).total_seconds())
+        for itv in tl.intervals:
+            seconds = itv.seconds(now)
+            bucket["by_label"][itv.label] += seconds
+            bucket["total_seconds"] += seconds
+            per_label_totals[itv.label] += seconds
+
+    rows = []
+    for bucket in buckets.values():
+        meta = known.get(bucket["milestone"], {})
+        leads = bucket["lead_seconds"]
+        rows.append({
+            "milestone": bucket["milestone"],
+            "state": meta.get("state"),
+            "start_date": meta.get("start_date"),
+            "due_date": meta.get("due_date"),
+            "web_url": meta.get("web_url"),
+            "issues": bucket["issues"],
+            "closed_issues": bucket["closed"],
+            "completion": round(bucket["closed"] / bucket["issues"] * 100, 1)
+            if bucket["issues"] else 0.0,
+            "contributors": len(bucket["contributors"]),
+            "total_hours": round(bucket["total_seconds"] / 3600, 2),
+            "total_human": format_duration(bucket["total_seconds"]),
+            "avg_lead_hours": round(sum(leads) / len(leads) / 3600, 2) if leads else 0.0,
+            "by_label": {
+                label: {
+                    "hours": round(sec / 3600, 2),
+                    "human": format_duration(sec),
+                }
+                for label, sec in sorted(bucket["by_label"].items(), key=lambda x: -x[1])
+            },
+        })
+
+    # sprint sem data vai para o fim; entre as datadas, a mais recente primeiro
+    rows.sort(key=lambda r: (r["due_date"] or "", r["milestone"]), reverse=True)
+    rows.sort(key=lambda r: r["milestone"] == NO_MILESTONE)
+
+    columns = [name for name in label_order if name in per_label_totals]
+    columns += [name for name in per_label_totals if name not in columns]
+
+    return {"project_id": project_id, "columns": columns, "milestones": rows[:limit]}
+
+
