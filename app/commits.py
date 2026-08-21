@@ -117,3 +117,30 @@ def author_aliases(project_id: int, author: str) -> set[str]:
     }
 
 
+def _rows(
+    project_id: int,
+    since: datetime | None = None,
+    until: datetime | None = None,
+    author: str | None = None,
+    include_merges: bool = False,
+) -> list[Any]:
+    sql = "SELECT * FROM commits WHERE project_id = ?"
+    params: list[Any] = [project_id]
+    if not include_merges:
+        sql += " AND is_merge = 0"
+    if since:
+        sql += " AND committed_at >= ?"
+        params.append(since.isoformat())
+    if until:
+        sql += " AND committed_at <= ?"
+        params.append(until.isoformat())
+    sql += " ORDER BY committed_at DESC"
+    with session() as conn:
+        rows = conn.execute(sql, params).fetchall()
+    if author:
+        aliases = author_aliases(project_id, author)
+        rows = [r for r in rows if (r["author_name"] or "").lower() in aliases
+                or (r["author_email"] or "").lower() in aliases]
+    return rows
+
+
