@@ -337,3 +337,85 @@ def issue_ref(title: str | None) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def convention_report(
+    project_id: int,
+    since: datetime | None = None,
+    until: datetime | None = None,
+    author: str | None = None,
+    include_merges: bool = False,
+) -> dict[str, Any]:
+    """Quanto de cada pessoa segue a convencao de mensagem de commit.
+
+    Merge commit fica de fora por padrao: a mensagem e gerada pelo GitLab e
+    reprovar o time por ela nao mede nada.
+    """
+    rows, fora_do_time = split_members(
+        project_id, _rows(project_id, since, until, author, include_merges)
+    )
+
+    by_author: dict[str, dict[str, Any]] = {}
+    totals_reasons: dict[str, int] = defaultdict(int)
+    ok_total = 0
+
+    for r in rows:
+        name = (r["author_name"] or "?").strip()
+        person = by_author.setdefault(name, {
+            "author": name, "email": r["author_email"], "commits": 0, "ok": 0,
+            "reasons": defaultdict(int), "offenders": [],
+        })
+        person["commits"] += 1
+        reasons = check_title(r["title"])
+        if not reasons:
+            person["ok"] += 1
+            ok_total += 1
+            continue
+        for reason in reasons:
+            person["reasons"][reason] += 1
+            totals_reasons[reason] += 1
+        if len(person["offenders"]) < 8:
+            person["offenders"].append({
+                "short_id": r["short_id"],
+                "title": r["title"],
+                "web_url": r["web_url"],
+                "committed_at": r["committed_at"],
+                "reasons": reasons,
+            })
+
+    # nome do git != usuario do GitLab: "lucas.delmirio" e a mesma pessoa que
+    # "Lucas Delmirio da Silva", e o relatorio e por membro do time
+    members = member_names(project_id)
+
+    autores = []
+    for person in by_author.values():
+        total = person["commits"]
+        autores.append({
+            "author": person["author"],
+            "member": match_member(person["author"], members, person.get("email")),
+            "commits": total,
+            "ok": person["ok"],
+            "off": total - person["ok"],
+            "pct": round(person["ok"] / total * 100, 1) if total else 0.0,
+            "reasons": dict(sorted(person["reasons"].items(), key=lambda x: -x[1])),
+            "offenders": person["offenders"],
+        })
+    # pior aderencia primeiro entre quem tem volume parecido: o relatorio
+    # existe para achar quem precisa ajustar, nao para premiar
+    autores.sort(key=lambda a: (a["pct"], -a["commits"]))
+
+    return {
+        "project_id": project_id,
+        "rule": CONVENTION_RULE,
+        "types": list(CONVENTION_TYPES),
+        "reason_labels": REASON_LABELS,
+        "totals": {
+            "commits": len(rows),
+            "ok": ok_total,
+            "off": len(rows) - ok_total,
+            "pct": round(ok_total / len(rows) * 100, 1) if rows else 0.0,
+        },
+        "by_reason": dict(sorted(totals_reasons.items(), key=lambda x: -x[1])),
+        "authors": autores,
+        "outsiders": outsiders_note(fora_do_time),
+    }
+
+
