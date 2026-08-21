@@ -332,3 +332,86 @@ def sprint_summary(
 # HTML de arquivo unico, sem CSS externo e sem script: e feito para virar
 # anexo de entrega e para imprimir em PDF pelo proprio navegador.
 
+_CSS = """
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 40px 32px 64px; background: #f4f4f5; color: #0f0f10;
+  font: 14px/1.5 ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 1000px; margin: 0 auto; }
+h1 { font-size: 26px; letter-spacing: -.03em; margin: 0 0 6px; }
+h2 { font-size: 17px; letter-spacing: -.02em; margin: 32px 0 10px; }
+p.sub { color: #52525b; margin: 0 0 4px; font-size: 13px; }
+section { background: #fff; border: 1px solid #ececef; border-radius: 14px;
+  padding: 18px 20px; margin-top: 16px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid #ececef;
+  vertical-align: top; }
+th { color: #52525b; font-weight: 500; font-size: 12px; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tbody tr:last-child td { border-bottom: 0; }
+.delta { font-size: 11.5px; display: block; }
+.up { color: #15803d; } .down { color: #dc2626; } .flat { color: #a1a1aa; }
+.bar { height: 7px; border-radius: 99px; background: #f1f1f4; overflow: hidden;
+  margin-top: 5px; }
+.bar i { display: block; height: 100%; background: #7c3aed; border-radius: 99px; }
+.bar i.warn { background: #b45309; } .bar i.good { background: #15803d; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 99px;
+  border: 1px solid #e0e0e4; font-size: 11.5px; color: #52525b; margin-right: 4px; }
+.pill.off { color: #b45309; border-color: #e8c9a0; background: #fdf6ec; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+  margin-right: 7px; vertical-align: -1px; }
+.tag { display: inline-flex; align-items: center; padding: 2px 9px 2px 7px;
+  border-radius: 99px; border: 1px solid #ececef; font-size: 11.5px; }
+h2 { border-left: 3px solid #7c3aed; padding-left: 10px; }
+.num b { font-weight: 600; }
+.muted { color: #a1a1aa; }
+code { background: #f4f4f5; padding: 1px 5px; border-radius: 5px; font-size: 12px; }
+footer { color: #a1a1aa; font-size: 12px; margin-top: 28px; text-align: center; }
+@media print {
+  @page { size: A4 portrait; margin: 14mm 12mm; }
+  /* sem isto o Chrome imprime as barras e os deltas em cinza */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { background: #fff; padding: 0; font-size: 11.5px; }
+  main { max-width: none; }
+  h1 { font-size: 20px; }
+  h2 { font-size: 14px; margin: 0 0 8px; }
+  section { break-inside: auto; border-radius: 0; border: 0; padding: 0;
+    margin-top: 18px; border-top: 1px solid #ddd; padding-top: 12px; }
+  section:first-of-type { border-top: 0; padding-top: 0; }
+  table { font-size: 10.5px; }
+  th, td { padding: 5px 6px; }
+  /* tabela que atravessa a quebra continua com cabecalho na pagina seguinte */
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+  .no-print { display: none !important; }
+}
+"""
+
+
+# As mesmas seis cores de serie da tela, na mesma ordem: quem olha o PDF
+# depois de olhar o dash reconhece a coluna pela cor.
+SERIES = ("#7c3aed", "#8cae00", "#0e9bd6", "#b45309", "#a78bfa", "#db2777")
+NEUTRA = "#a1a1aa"
+
+
+def _palette(columns: list[str]) -> dict[str, str]:
+    return {name: SERIES[i] if i < len(SERIES) else NEUTRA for i, name in enumerate(columns)}
+
+
+def _rate_color(pct: float | None) -> str:
+    """Verde a partir de 80%, vermelho abaixo de 50%. Os cortes sao os mesmos
+    da tela — servem para varrer com o olho, nao para dar nota."""
+    if pct is None:
+        return NEUTRA
+    return "#15803d" if pct >= 80 else "#dc2626" if pct < 50 else "#b45309"
+
+
+def _bar(fraction: float, color: str) -> str:
+    largura = max(0.0, min(fraction, 1.0)) * 100
+    return f'<div class="bar"><i style="width:{largura:.0f}%;background:{color}"></i></div>'
+
+
+def _swatch(color: str) -> str:
+    return f'<i class="dot" style="background:{color}"></i>'
+
+
