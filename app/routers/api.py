@@ -135,3 +135,21 @@ def milestones(project: str | None = None) -> dict[str, Any]:
     return {"project_id": project_id, "milestones": metrics.milestones(project_id)}
 
 
+@router.get("/metrics/contributors")
+def contributors(
+    project: str | None = None,
+    labels: str | None = Query(None, description="Colunas separadas por virgula, ex: Doing,Review"),
+    milestone: str | None = Query(None, description=MILESTONE_DESC),
+    since: str | None = Query(None, description="ISO 8601, ex: 2026-01-01"),
+    days: int | None = Query(None, ge=1, le=3650, description="Atalho: ultimos N dias"),
+    state: str | None = Query(None, pattern="^(opened|closed)$"),
+) -> dict[str, Any]:
+    """Tempo total por contribuidor em cada coluna do board."""
+    project_id = _resolve(project)
+    label_list = [x.strip() for x in labels.split(",")] if labels else None
+    return metrics.contributor_report(
+        project_id, label_list, since=_parse_since(since, days), state=state,
+        milestone=milestone,
+    )
+
+
