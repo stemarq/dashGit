@@ -64,3 +64,15 @@ def split_members(project_id: int, rows: list[Any]) -> tuple[list[Any], list[Any
     return dentro, fora
 
 
+def outsiders_note(rows: list[Any]) -> dict[str, Any]:
+    """Resumo do que ficou de fora, para a tela poder dizer o que ignorou."""
+    por_autor: dict[str, int] = defaultdict(int)
+    for r in rows:
+        por_autor[(r["author_name"] or "?").strip()] += 1
+    return {
+        "commits": len(rows),
+        "authors": [{"author": nome, "commits": n}
+                    for nome, n in sorted(por_autor.items(), key=lambda x: -x[1])],
+    }
+
+
