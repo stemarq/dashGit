@@ -47,3 +47,18 @@ def _parse_since(since: str | None, days: int | None) -> datetime | None:
     return None
 
 
+@router.get("/health")
+def health() -> dict[str, Any]:
+    settings = get_settings()
+    with session() as conn:
+        projects = conn.execute("SELECT COUNT(*) AS n FROM projects").fetchone()["n"]
+        issues = conn.execute("SELECT COUNT(*) AS n FROM issues").fetchone()["n"]
+    return {
+        "status": "ok",
+        "gitlab_api": settings.gitlab_api_url,
+        "token_configured": bool(settings.gitlab_token),
+        "cached_projects": projects,
+        "cached_issues": issues,
+    }
+
+
