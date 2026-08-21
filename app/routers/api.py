@@ -353,3 +353,25 @@ def report_sprint(
     return data
 
 
+@router.get("/report/sprint.html", response_class=HTMLResponse)
+def report_sprint_html(
+    milestone: str = Query(..., description=MILESTONE_DESC),
+    project: str | None = None,
+    labels: str | None = None,
+    download: bool = Query(True, description="false abre no navegador em vez de baixar"),
+    printable: bool = Query(False, alias="print", description="abre a caixa de impressao"),
+) -> HTMLResponse:
+    """O resumo da sprint como pagina autocontida."""
+    project_id = _resolve(project)
+    label_list = [x.strip() for x in labels.split(",")] if labels else None
+    data = sprint_report_builder.sprint_summary(project_id, milestone, label_list)
+    if not data:
+        raise HTTPException(404, f"Sprint '{milestone}' nao esta no cache deste projeto.")
+    slug = milestone.lower().replace(" ", "-").replace("/", "-")
+    stamp = data["generated_at"][:10]
+    headers = {} if printable or not download else {
+        "Content-Disposition": f'attachment; filename="relatorio-{slug}-{stamp}.html"'
+    }
+    return HTMLResponse(
+        sprint_report_builder.render_summary_html(data, autoprint=printable), headers=headers
+    )
