@@ -448,3 +448,28 @@ def _delta_html(value: float | None, unit: str = "%", lower_is_better: bool = Fa
             f'{sinal}{value:g}{unit}</span>')
 
 
+_SUMMARY_CSS = """
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px; }
+.kpi { border-radius: 10px; padding: 12px 14px; border: 1px solid #ececef;
+  border-left-width: 3px; }
+.kpi-label { color: #52525b; font-size: 12px; margin-bottom: 5px; }
+.kpi-value { font-size: 22px; font-weight: 600; letter-spacing: -.03em; }
+@media print { .kpis { grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .kpi { padding: 8px 10px; }
+  .kpi-value { font-size: 15px; } }
+"""
+
+_PRINT_JS = """
+<script>
+  // a caixa de impressao do navegador e o caminho para o PDF: nao exige
+  // dependencia nenhuma no servidor e sai igual ao que se ve na tela
+  addEventListener("load", () => setTimeout(() => window.print(), 250));
+</script>"""
+
+_PRINT_BAR = """
+<p class="sub no-print" style="margin-bottom:14px">
+  A caixa de impressao vai abrir sozinha — escolha <b>Salvar como PDF</b> em
+  "Destino". Se ela nao abrir, use Ctrl+P.</p>"""
+
+
