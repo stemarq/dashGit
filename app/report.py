@@ -415,3 +415,13 @@ def _swatch(color: str) -> str:
     return f'<i class="dot" style="background:{color}"></i>'
 
 
+def _fmt_h(hours: float | None) -> str:
+    if not hours:
+        return "0h"
+    if hours < 1:
+        return f"{round(hours * 60)}m"
+    if hours < 48:
+        return f"{hours:.1f}h" if hours < 10 else f"{hours:.0f}h"
+    return f"{int(hours // 24)}d {round(hours % 24)}h"
+
+
