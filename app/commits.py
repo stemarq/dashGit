@@ -225,3 +225,67 @@ def match_member(author: str, members: Iterable[str], email: str | None = None) 
     return empatados[0] if melhor >= 2 or len(nome) <= 1 else None
 
 
+def _series(by_day: dict[str, dict[str, int]]) -> tuple[list[dict[str, Any]], str]:
+    """Serie temporal com o balde certo para o intervalo.
+
+    Repositorio criado a partir de template carrega commits de anos atras.
+    Forcar tudo em barras diarias renderiza centenas de colunas vazias e
+    esconde a atividade real, entao o balde cresce com o intervalo.
+    """
+    if not by_day:
+        return [], "day"
+
+    start = date.fromisoformat(min(by_day))
+    end = date.fromisoformat(max(by_day))
+    span = (end - start).days
+
+    if span <= 70:
+        gran, passo = "day", timedelta(days=1)
+        chave = lambda d: d                                   # noqa: E731
+    elif span <= 400:
+        gran, passo = "week", timedelta(days=7)
+        chave = lambda d: d - timedelta(days=d.weekday())      # noqa: E731
+        start = chave(start)
+    else:
+        gran, passo = "month", None
+        chave = lambda d: d.replace(day=1)                     # noqa: E731
+        start = chave(start)
+
+    baldes: dict[date, dict[str, int]] = {}
+    for key, valores in by_day.items():
+        b = baldes.setdefault(chave(date.fromisoformat(key)),
+                              {"commits": 0, "additions": 0, "deletions": 0})
+        for campo in b:
+            b[campo] += valores[campo]
+
+    # preenche os vazios para o grafico nao mentir sobre ritmo
+    out, cursor = [], start
+    while cursor <= end:
+        valores = baldes.get(cursor, {"commits": 0, "additions": 0, "deletions": 0})
+        out.append({"date": cursor.isoformat(), **valores})
+        if passo:
+            cursor += passo
+        else:
+            cursor = (cursor.replace(day=28) + timedelta(days=4)).replace(day=1)
+    return out, gran
+
+
+# ── convencao de mensagem ────────────────────────────────────────────────
+#
+# O padrao combinado pelo time: `tipo(#issue): descricao`, sem acentuacao.
+# Maiuscula e permitida (24/08/2026) — sigla tecnica no meio da descricao
+# ("deriva NPS_MEDIO por rota") era o motivo mais comum de reprovacao e nao
+# atrapalhava ninguem. Cada regra quebrada vira um motivo, para a analise
+# dizer *o que* corrigir em vez de so reprovar.
+
+CONVENTION_RULE = "tipo(#issue): descricao — sem acentuacao"
+
+CONVENTION_TYPES = ("feat", "fix", "docs", "chore", "refactor", "test", "style",
+                    "perf", "build", "ci", "revert")
+
+CONVENTION_PATTERN = re.compile(r"^(?P<type>[a-z]+)\((?P<ref>#\d+)\): (?P<desc>\S.*)$")
+
+# a forma certa, ignorando so o espacamento — separa "escreveu errado" de
+# "esqueceu um espaco", que sao problemas de tamanho bem diferente
+_LOOSE = re.compile(r"^[a-z]+\s*\(\s*#\d+\s*\)\s*:\s*\S")
+
