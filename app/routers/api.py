@@ -224,3 +224,20 @@ def commits(
     )
 
 
+@router.get("/commit-authors")
+def commit_authors(project: str | None = None) -> dict[str, Any]:
+    """Autores de commit e os e-mails de cada um, com o nome do GitLab quando
+    da para casar. Serve para achar quem ficou dividido em duas identidades."""
+    project_id = _resolve(project)
+    with session() as conn:
+        members = [r[0] for r in conn.execute(
+            "SELECT DISTINCT user_name FROM label_events"
+            " WHERE project_id = ? AND user_name IS NOT NULL", (project_id,))]
+    autores = commit_metrics.identities(project_id)
+    for a in autores:
+        a["gitlab_name"] = commit_metrics.match_member(
+            a["author"], members, a["emails"][0] if a["emails"] else None
+        )
+    return {"project_id": project_id, "authors": autores}
+
+
