@@ -153,3 +153,23 @@ def contributors(
     )
 
 
+@router.get("/metrics/contributor")
+def contributor(
+    name: str = Query(..., description="Nome exato do responsavel, como vem em /metrics/contributors"),
+    project: str | None = None,
+    labels: str | None = None,
+    milestone: str | None = Query(None, description=MILESTONE_DESC),
+    since: str | None = None,
+    days: int | None = Query(None, ge=1, le=3650),
+) -> dict[str, Any]:
+    """Perfil de uma pessoa: tempo por coluna, por sprint e as issues dela."""
+    project_id = _resolve(project)
+    label_list = [x.strip() for x in labels.split(",")] if labels else None
+    data = metrics.contributor_detail(
+        project_id, name, label_list, since=_parse_since(since, days), milestone=milestone
+    )
+    if not data["issues_count"]:
+        raise HTTPException(404, f"Sem issues atribuidas a '{name}' neste recorte.")
+    return data
+
+
