@@ -306,3 +306,31 @@ def report_sprints(
     return sprint_report_builder.sprint_report(project_id, label_list, limit=limit)
 
 
+@router.get("/report/sprints.html", response_class=HTMLResponse)
+def report_sprints_html(
+    project: str | None = None,
+    labels: str | None = None,
+    limit: int = Query(8, ge=1, le=50),
+    download: bool = Query(True, description="false abre no navegador em vez de baixar"),
+    printable: bool = Query(False, alias="print", description="abre a caixa de impressao"
+                            " assim que carrega — e por ela que sai o PDF"),
+) -> HTMLResponse:
+    """O mesmo relatorio como pagina autocontida, para anexar na entrega.
+
+    O PDF sai por `?print=1`: a pagina se manda imprimir e o proprio navegador
+    salva como PDF. Gerar o PDF no servidor exigiria um motor de renderizacao
+    (WeasyPrint, wkhtmltopdf) so para repetir o que o navegador ja faz.
+    """
+    project_id = _resolve(project)
+    label_list = [x.strip() for x in labels.split(",")] if labels else None
+    data = sprint_report_builder.sprint_report(project_id, label_list, limit=limit)
+    slug = (data["project"].get("path") or str(project_id)).replace("/", "-")
+    stamp = data["generated_at"][:10]
+    headers = {} if printable or not download else {
+        "Content-Disposition": f'attachment; filename="relatorio-sprints-{slug}-{stamp}.html"'
+    }
+    return HTMLResponse(
+        sprint_report_builder.render_html(data, autoprint=printable), headers=headers
+    )
+
+
