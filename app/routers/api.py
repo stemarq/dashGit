@@ -173,3 +173,15 @@ def contributor(
     return data
 
 
+@router.get("/metrics/columns")
+def columns(
+    project: str | None = None,
+    labels: str | None = None,
+    milestone: str | None = Query(None, description=MILESTONE_DESC),
+) -> dict[str, Any]:
+    """Tempo medio/mediano de permanencia por coluna + WIP atual."""
+    project_id = _resolve(project)
+    label_list = [x.strip() for x in labels.split(",")] if labels else None
+    return metrics.column_report(project_id, label_list, milestone=milestone)
+
+
