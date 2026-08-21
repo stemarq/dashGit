@@ -221,3 +221,114 @@ def _convention_by_person(
     return linhas
 
 
+def sprint_summary(
+    project_id: int,
+    milestone: str,
+    labels: Iterable[str] | None = None,
+    issue_limit: int = 10,
+    offender_limit: int = 12,
+) -> dict[str, Any]:
+    """Uma sprint por inteiro: numeros, gargalo, pessoas, issues e commits.
+
+    O comparativo responde "estamos melhorando?"; este responde "o que
+    aconteceu nesta sprint?". Por isso aqui nada e cortado no topo — entram
+    todas as pessoas, e nao so as seis primeiras.
+    """
+    label_filter = list(labels) if labels else None
+    base = metrics.milestone_report(project_id, label_filter, limit=50)
+    linhas = [r for r in base["milestones"] if r["milestone"] != metrics.NO_MILESTONE]
+    atual = next((r for r in linhas if r["milestone"] == milestone), None)
+    if atual is None:
+        return {}
+
+    # a sprint imediatamente anterior, para o resumo tambem situar o numero
+    indice = linhas.index(atual)
+    anterior = linhas[indice + 1] if indice + 1 < len(linhas) else None
+
+    focus = metrics.focus_label(project_id, label_filter)
+    review = metrics.review_label(project_id, label_filter)
+    people = metrics.contributor_report(project_id, label_filter, milestone=milestone)
+    colunas = metrics.column_report(project_id, label_filter, milestone=milestone)
+    issues = metrics.issue_report(project_id, label_filter, milestone=milestone)
+    commits = _sprint_commits(project_id, milestone)
+    por_pessoa = _convention_by_person(project_id, commits)
+    fora = [c for c in commits if c["convention"]]
+    pct = round((len(commits) - len(fora)) / len(commits) * 100, 1) if commits else None
+
+    anterior_commits = _sprint_commits(project_id, anterior["milestone"]) if anterior else []
+    anterior_pct = (
+        round(sum(1 for c in anterior_commits if not c["convention"])
+              / len(anterior_commits) * 100, 1)
+        if anterior_commits else None
+    )
+
+    def em_foco(linha: dict[str, Any]) -> float:
+        return linha["by_label"].get(focus, {}).get("hours", 0.0) if focus else 0.0
+
+    delta = {} if not anterior else {
+        "total_hours": _pct_delta(atual["total_hours"], anterior["total_hours"]),
+        "focus_hours": _pct_delta(em_foco(atual), em_foco(anterior)),
+        "closed_issues": _pct_delta(atual["closed_issues"], anterior["closed_issues"]),
+        "avg_lead_hours": _pct_delta(atual["avg_lead_hours"], anterior["avg_lead_hours"]),
+        "commits": _pct_delta(len(commits), len(anterior_commits)),
+        "completion_pp": round(atual["completion"] - anterior["completion"], 1),
+        "convention_pp": round(pct - anterior_pct, 1)
+        if pct is not None and anterior_pct is not None else None,
+    }
+
+    with session() as conn:
+        project = conn.execute(
+            "SELECT path, name, web_url, synced_at FROM projects WHERE id = ?", (project_id,)
+        ).fetchone()
+        meta = conn.execute(
+            "SELECT web_url FROM milestones WHERE project_id = ? AND title = ?",
+            (project_id, milestone),
+        ).fetchone()
+
+    return {
+        "project_id": project_id,
+        "project": dict(project) if project else {},
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "focus_label": focus,
+        "review_label": review,
+        "milestone": {**atual, "web_url": (meta["web_url"] if meta else None)},
+        "compared_to": anterior["milestone"] if anterior else None,
+        "delta": delta,
+        "columns": colunas["columns"],
+        # a ordem do board define a cor de cada coluna, igual a tela: quem ve
+        # o PDF depois do dash reconhece a coluna pela cor
+        "columns_order": base["columns"],
+        "people": [
+            {**p, "convention": next(
+                (c for c in por_pessoa if c["person"] == p["contributor"]), None
+            )}
+            for p in people["contributors"]
+        ],
+        # quem commitou na sprint mas nao aparece na tabela de tempo (nao moveu
+        # card nenhum) — some se a juncao for so pela esquerda
+        "commit_only": [
+            c for c in por_pessoa
+            if not any(p["contributor"] == c["person"] for p in people["contributors"])
+        ],
+        "waiting_label": ", ".join(get_settings().queue_list),
+        "issues": issues["issues"][:issue_limit],
+        "issues_total": len(issues["issues"]),
+        "commits": {
+            "total": len(commits),
+            "ok": len(commits) - len(fora),
+            "off": len(fora),
+            "pct": pct,
+            "by_person": por_pessoa,
+            "outsiders": _outsiders(project_id),
+            "rule": commit_metrics.CONVENTION_RULE,
+            "reason_labels": commit_metrics.REASON_LABELS,
+            "offenders": fora[:offender_limit],
+        },
+    }
+
+
+# ── exportacao ───────────────────────────────────────────────────────────
+#
+# HTML de arquivo unico, sem CSS externo e sem script: e feito para virar
+# anexo de entrega e para imprimir em PDF pelo proprio navegador.
+
