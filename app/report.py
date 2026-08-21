@@ -32,3 +32,28 @@ def _issue_milestones(project_id: int) -> dict[int, str]:
     return {r["iid"]: (r["milestone"] or metrics.NO_MILESTONE) for r in rows}
 
 
+def _commits_by_sprint(project_id: int) -> tuple[dict[str, dict[str, int]], int]:
+    """Commits por sprint, pela issue que a mensagem cita.
+
+    Data nao serve para isso: commit feito no primeiro dia da sprint 2 pode
+    ser de uma issue arrastada da sprint 1. Quem nao cita issue nao entra em
+    sprint nenhuma — e o numero de orfaos e devolvido junto, para o relatorio
+    poder dizer de quantos commits ele nao sabe a sprint.
+    """
+    milestone_of = _issue_milestones(project_id)
+    dentro, _ = commit_metrics.split_members(project_id, commit_metrics._rows(project_id))
+    out: dict[str, dict[str, int]] = {}
+    orphans = 0
+    for row in dentro:
+        iid = commit_metrics.issue_ref(row["title"])
+        sprint = milestone_of.get(iid) if iid is not None else None
+        if sprint is None:
+            orphans += 1
+            continue
+        bucket = out.setdefault(sprint, {"commits": 0, "ok": 0})
+        bucket["commits"] += 1
+        if not commit_metrics.check_title(row["title"]):
+            bucket["ok"] += 1
+    return out, orphans
+
+
