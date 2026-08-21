@@ -437,3 +437,14 @@ def _periodo(sprint: dict[str, Any]) -> str:
     return "encerrada" if sprint.get("state") == "closed" else "em andamento"
 
 
+def _delta_html(value: float | None, unit: str = "%", lower_is_better: bool = False) -> str:
+    if value is None:
+        return '<span class="delta flat">—</span>'
+    if abs(value) < 0.05:
+        return '<span class="delta flat">estavel</span>'
+    good = (value < 0) if lower_is_better else (value > 0)
+    sinal = "+" if value > 0 else ""
+    return (f'<span class="delta {"up" if good else "down"}">'
+            f'{sinal}{value:g}{unit}</span>')
+
+
