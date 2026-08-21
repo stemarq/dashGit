@@ -36,3 +36,22 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def revalidate_static(request, call_next):
+    """`no-cache` nao e "nao guarde": o navegador guarda mas revalida sempre,
+    e o ETag do StaticFiles devolve 304 quando nada mudou. Sem isso o Chrome
+    serve CSS/JS antigos da memoria e uma correcao parece nao ter funcionado.
+    """
+    response = await call_next(request)
+    if request.url.path.startswith("/static") or request.url.path == "/":
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
+app.include_router(api_router)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/", include_in_schema=False)
+def dashboard() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
