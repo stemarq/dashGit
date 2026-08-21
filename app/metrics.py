@@ -779,3 +779,42 @@ def issue_report(
     return {"focus_label": focus, "sorted_by": key, "issues": out}
 
 
+def milestones(project_id: int) -> list[dict[str, Any]]:
+    """Sprints do cache, com contagem de issues. Ordena pela data de termino
+    (mais recente primeiro); milestones sem data caem no fim."""
+    with session() as conn:
+        rows = conn.execute(
+            "SELECT m.title, m.state, m.start_date, m.due_date, m.web_url,"
+            " (SELECT COUNT(*) FROM issues i"
+            "    WHERE i.project_id = m.project_id AND i.milestone = m.title) AS issues"
+            " FROM milestones m WHERE m.project_id = ?",
+            (project_id,),
+        ).fetchall()
+        orphans = conn.execute(
+            "SELECT COUNT(*) AS n FROM issues"
+            " WHERE project_id = ? AND (milestone IS NULL OR milestone = '')",
+            (project_id,),
+        ).fetchone()["n"]
+        # issues podem apontar para uma milestone que nao veio no sync
+        # (deletada, ou de um grupo fora do alcance do token)
+        unknown = conn.execute(
+            "SELECT i.milestone AS title, COUNT(*) AS issues FROM issues i"
+            " WHERE i.project_id = ? AND i.milestone IS NOT NULL AND i.milestone <> ''"
+            "   AND i.milestone NOT IN (SELECT title FROM milestones WHERE project_id = ?)"
+            " GROUP BY i.milestone",
+            (project_id, project_id),
+        ).fetchall()
+
+    out = [dict(r) for r in rows]
+    out += [
+        {"title": r["title"], "state": None, "start_date": None, "due_date": None,
+         "web_url": None, "issues": r["issues"]}
+        for r in unknown
+    ]
+    out.sort(key=lambda m: (m["due_date"] or "", m["title"]), reverse=True)
+    if orphans:
+        out.append({"title": NO_MILESTONE, "state": None, "start_date": None,
+                    "due_date": None, "web_url": None, "issues": orphans})
+    return out
+
+
