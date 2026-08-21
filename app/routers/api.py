@@ -62,3 +62,21 @@ def health() -> dict[str, Any]:
     }
 
 
+@router.post("/sync")
+async def sync(
+    project: str | None = Query(None, description="grupo/projeto ou ID numerico"),
+    full: bool = Query(False, description="Ignora o sync incremental e rebusca tudo"),
+) -> dict[str, Any]:
+    settings = get_settings()
+    targets = [project] if project else settings.project_list
+    if not targets:
+        raise HTTPException(400, "Informe ?project= ou defina DEFAULT_PROJECTS no .env")
+    results = []
+    for target in targets:
+        try:
+            results.append(await sync_project(target, full=full))
+        except GitLabError as exc:
+            raise HTTPException(502, str(exc)) from exc
+    return {"synced": results}
+
+
