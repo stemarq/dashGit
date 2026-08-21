@@ -902,3 +902,185 @@ def milestone_report(
     return {"project_id": project_id, "columns": columns, "milestones": rows[:limit]}
 
 
+def contributor_detail(
+    project_id: int,
+    name: str,
+    labels: Iterable[str] | None = None,
+    since: datetime | None = None,
+    until: datetime | None = None,
+    milestone: str | None = None,
+) -> dict[str, Any]:
+    """Perfil de uma pessoa: tempo por coluna, por sprint e as issues dela.
+
+    A janela (`since`/`until`) recorta os intervalos como no relatorio geral,
+    mas a lista de issues e o lead time olham o historico inteiro — senao uma
+    issue longa desapareceria do perfil de quem a tocou.
+    """
+    now = datetime.now(timezone.utc)
+    until = until or now
+    label_filter = list(labels) if labels else None
+    focus = focus_label(project_id, label_filter)
+    # a pessoa entra no perfil por ter feito alguma etapa, nao por ser a
+    # responsavel: quem so revisou tambem tem tempo aqui
+    queues = queue_labels()
+    persons = person_labels(project_id) if queues else {}
+    review = review_label(project_id, label_filter)
+    timelines = build_timelines(project_id, label_filter, None, milestone)
+    # entra no perfil quem fez alguma etapa, quem revisou, ou quem deixou
+    # algum card esperando
+    mine = [t for t in timelines
+            if any(interval_owner(i, t) == name and i.label.lower() not in queues
+                   and counts_for_person(i, t, review) for i in t.intervals)
+            or any(d == name for d, _ in queue_debts(t, queues, persons))]
+    waiting_total = 0.0
+    waiting_issues: set[int] = set()
+    review_total = 0.0
+    review_issues: set[int] = set()
+
+    by_label: dict[str, dict[str, Any]] = defaultdict(
+        lambda: {"seconds": 0.0, "issues": set(), "open": 0}
+    )
+    by_sprint: dict[str, dict[str, Any]] = defaultdict(
+        lambda: {"seconds": 0.0, "issues": 0, "closed": 0}
+    )
+    total = 0.0
+    leads: list[float] = []
+    issues: list[dict[str, Any]] = []
+    wip = 0
+
+    for tl in mine:
+        owned = [i for i in tl.intervals
+                 if interval_owner(i, tl) == name and i.label.lower() not in queues
+                 and counts_for_person(i, tl, review)]
+        review_seconds = sum(i.seconds(now) for i in owned if i.label == review)
+        if review_seconds:
+            review_total += review_seconds
+            review_issues.add(tl.iid)
+        debt = sum(itv.seconds(now) for debtor, itv in queue_debts(tl, queues, persons)
+                   if debtor == name)
+        waiting_total += debt
+        if debt:
+            waiting_issues.add(tl.iid)
+        windowed = 0.0
+        for itv in owned:
+            start = max(itv.start, since) if since else itv.start
+            end = min(itv.end or now, until)
+            if end <= start:
+                continue
+            seconds = (end - start).total_seconds()
+            bucket = by_label[itv.label]
+            bucket["seconds"] += seconds
+            bucket["issues"].add(tl.iid)
+            if not itv.closed:
+                bucket["open"] += 1
+            windowed += seconds
+        total += windowed
+
+        sprint = by_sprint[tl.milestone]
+        sprint["seconds"] += windowed
+        sprint["issues"] += 1
+        if tl.state == "closed":
+            sprint["closed"] += 1
+
+        # o detalhe da issue mostra so o que e desta pessoa
+        full: dict[str, float] = defaultdict(float)
+        for itv in owned:
+            full[itv.label] += itv.seconds(now)
+        stints = sorted(owned, key=lambda i: i.start)
+        current = next((i.label for i in reversed(stints) if not i.closed), None)
+        if current:
+            wip += 1
+        if tl.created_at:
+            leads.append(((tl.closed_at or now) - tl.created_at).total_seconds())
+
+        issues.append({
+            "iid": tl.iid,
+            "title": tl.title,
+            "state": tl.state,
+            "milestone": tl.milestone,
+            "tags": tl.tags,
+            "web_url": tl.web_url,
+            "current_column": current,
+            "focus_hours": round(full.get(focus, 0.0) / 3600, 2) if focus else 0.0,
+            "working_hours": round(sum(full.values()) / 3600, 2),
+            "lead_time_hours": round(
+                ((tl.closed_at or now) - tl.created_at).total_seconds() / 3600, 2
+            ) if tl.created_at else 0.0,
+            "time_by_column": {
+                label: {"hours": round(sec / 3600, 2), "human": format_duration(sec)}
+                for label, sec in sorted(full.items(), key=lambda x: -x[1])
+            },
+            "role": sorted({i.label for i in stints}),
+            "review_hours": round(review_seconds / 3600, 2),
+            "review_human": format_duration(review_seconds),
+            "waiting_hours": round(debt / 3600, 2),
+            "transitions": [
+                {
+                    "label": i.label,
+                    "start": i.start.isoformat(),
+                    "end": i.end.isoformat() if i.end else None,
+                    "hours": round(i.seconds(now) / 3600, 2),
+                    "moved_by": i.moved_by,
+                }
+                for i in stints
+            ],
+        })
+
+    # ranqueia pelo que foi mais longo para esta pessoa: a revisao nao pode
+    # ficar sempre no fim so por nao ser a coluna de foco
+    issues.sort(
+        key=lambda i: (max(i["focus_hours"], i["review_hours"]), i["working_hours"]),
+        reverse=True,
+    )
+    closed = sum(1 for t in mine if t.state == "closed")
+    order = board_labels(project_id)
+    columns = [c for c in order if c in by_label] + [c for c in by_label if c not in order]
+
+    sprints = [
+        {
+            "milestone": title,
+            "hours": round(data["seconds"] / 3600, 2),
+            "human": format_duration(data["seconds"]),
+            "issues": data["issues"],
+            "closed_issues": data["closed"],
+            "completion": round(data["closed"] / data["issues"] * 100, 1) if data["issues"] else 0.0,
+        }
+        for title, data in by_sprint.items()
+    ]
+    known = {m["title"]: (m["due_date"] or "") for m in milestones(project_id)}
+    sprints.sort(key=lambda s: (known.get(s["milestone"], ""), s["milestone"]), reverse=True)
+    sprints.sort(key=lambda s: s["milestone"] == NO_MILESTONE)
+
+    return {
+        "project_id": project_id,
+        "contributor": name,
+        "focus_label": focus,
+        "review_label": review,
+        "review_hours": round(review_total / 3600, 2),
+        "review_human": format_duration(review_total),
+        "review_issues": len(review_issues),
+        "columns": columns,
+        "total_hours": round(total / 3600, 2),
+        "total_human": format_duration(total),
+        "issues_count": len(mine),
+        "closed_issues": closed,
+        "open_issues": len(mine) - closed,
+        "wip": wip,
+        "avg_lead_hours": round(sum(leads) / len(leads) / 3600, 2) if leads else 0.0,
+        "waiting_hours": round(waiting_total / 3600, 2),
+        "waiting_human": format_duration(waiting_total),
+        "waiting_issues": len(waiting_issues),
+        "focus_hours": round(by_label.get(focus, {}).get("seconds", 0.0) / 3600, 2)
+        if focus else 0.0,
+        "by_label": {
+            label: {
+                "hours": round(data["seconds"] / 3600, 2),
+                "human": format_duration(data["seconds"]),
+                "issues": len(data["issues"]),
+                "still_in_column": data["open"],
+            }
+            for label, data in by_label.items()
+        },
+        "by_milestone": sprints,
+        "issues": issues,
+    }
