@@ -616,3 +616,135 @@ sprint imediatamente anterior; taxas comparam em pontos percentuais (pp).</p>
 </main></body></html>"""
 
 
+def render_summary_html(data: dict[str, Any], autoprint: bool = False) -> str:
+    """O resumo de uma sprint como pagina autocontida."""
+    e = escape
+    m = data["milestone"]
+    d = data["delta"]
+    focus = data["focus_label"]
+    project = data["project"].get("path") or f"projeto {data['project_id']}"
+    gerado = datetime.fromisoformat(data["generated_at"]).astimezone()
+    commits = data["commits"]
+    rotulos = commits["reason_labels"]
+
+    cores = _palette(data["columns_order"])
+    cor_foco = cores.get(focus, SERIES[0])
+    numeros = [
+        ("Issues fechadas", f"{m['closed_issues']}/{m['issues']}",
+         _delta_html(d.get("completion_pp"), "pp"), "#15803d"),
+        (f"Tempo em {focus or 'coluna de trabalho'}",
+         m["by_label"].get(focus, {}).get("human", "0m") if focus else "—",
+         _delta_html(d.get("focus_hours")), cor_foco),
+        ("Acumulado", m["total_human"], _delta_html(d.get("total_hours")), SERIES[4]),
+        ("Lead time medio", _fmt_h(m["avg_lead_hours"]),
+         _delta_html(d.get("avg_lead_hours"), lower_is_better=True), SERIES[3]),
+        ("Commits", str(commits["total"]), _delta_html(d.get("commits")), SERIES[2]),
+        ("Convencao", "—" if commits["pct"] is None else f"{commits['pct']:g}%",
+         _delta_html(d.get("convention_pp"), "pp"), _rate_color(commits["pct"])),
+    ]
+    cartoes = "".join(f"""<div class="kpi" style="border-left-color:{cor}">
+        <div class="kpi-label">{e(rotulo)}</div>
+        <div class="kpi-value" style="color:{cor}">{e(valor)}</div>{variacao}</div>"""
+        for rotulo, valor, variacao, cor in numeros)
+
+    topo_pessoa = max([p["total_hours"] for p in data["people"]] + [1.0])
+    pessoas = ""
+    for p in data["people"]:
+        conv = p.get("convention")
+        pessoas += f"""<tr>
+        <td>{e(p['contributor'])}</td>
+        <td class="num">{e(p['total_human'])}{_bar(p['total_hours'] / topo_pessoa, SERIES[0])}</td>
+        <td class="num" style="color:{SERIES[2] if p['review_hours'] else NEUTRA}">
+          {e(_fmt_h(p['review_hours']))}</td>
+        <td class="num" style="color:{'#b45309' if p['waiting_hours'] else NEUTRA}">
+          {e(_fmt_h(p['waiting_hours']))}</td>
+        <td class="num">{p['closed_issues']}/{p['issues']}</td>
+        <td class="num">{f'<b style="color:{_rate_color(conv["pct"])}">{conv["pct"]:g}%</b>'
+                          + _bar(conv['pct'] / 100, _rate_color(conv['pct']))
+                          + f'<span class="delta flat">{conv["ok"]}/{conv["commits"]}</span>'
+                        if conv else '<span class="flat">—</span>'}</td>
+      </tr>"""
+
+    teto_coluna = max([c["avg_hours"] for c in data["columns"]] + [1.0])
+    colunas = "".join(f"""<tr>
+        <td><span class="tag">{_swatch(cores.get(c['label'], NEUTRA))}{e(c['label'])}</span></td>
+        <td class="num">{e(c['avg_human'])}
+          {_bar(c['avg_hours'] / teto_coluna, cores.get(c['label'], NEUTRA))}</td>
+        <td class="num">{e(_fmt_h(c['median_hours']))}</td>
+        <td class="num">{e(_fmt_h(c['max_hours']))}</td>
+        <td class="num">{c['completed_passes']}</td>
+        <td class="num">{c['wip']}</td>
+      </tr>""" for c in data["columns"])
+
+    teto_issue = max([i["focus_hours"] for i in data["issues"]] + [1.0])
+    issues = "".join(f"""<tr>
+        <td>#{i['iid']} {e(i['title'])}</td>
+        <td>{e(i['assignee'])}</td>
+        <td>{f'<span class="tag">{_swatch(cores.get(i["current_column"], NEUTRA))}'
+              f'{e(i["current_column"])}</span>' if i['current_column']
+             else '<span class="flat">fechada</span>'}</td>
+        <td class="num">{e(_fmt_h(i['focus_hours']))}
+          {_bar(i['focus_hours'] / teto_issue, cor_foco)}</td>
+        <td class="num">{e(_fmt_h(i['lead_time_hours']))}</td>
+      </tr>""" for i in data["issues"])
+
+    infratores = "".join(f"""<tr>
+        <td><code>{e(c['short_id'])}</code></td>
+        <td>{e(c['title'])}</td>
+        <td>{e(c['author'] or '?')}</td>
+        <td>{''.join(f'<span class="pill off">{e(rotulos.get(r, r))}</span>'
+                     for r in c['convention'])}</td>
+      </tr>""" for c in commits["offenders"])
+
+    return f"""<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dashGit — {e(m['milestone'])} — {e(project)}</title>
+<style>{_CSS}{_SUMMARY_CSS}</style>{_PRINT_JS if autoprint else ''}</head><body><main>
+{_PRINT_BAR if autoprint else ''}
+<h1>{e(m['milestone'])}</h1>
+<p class="sub">{e(project)} · {e(_periodo(m))} · gerado em {gerado.strftime('%d/%m/%Y %H:%M')}</p>
+<p class="sub">{'Variacao contra ' + e(data['compared_to']) + '.'
+  if data['compared_to'] else 'Primeira sprint com dados: nao ha com o que comparar.'}
+  Taxas comparam em pontos percentuais (pp).</p>
+
+<section><div class="kpis">{cartoes}</div></section>
+
+<section>
+<h2 style="margin-top:0">Quem fez o que</h2>
+<table><thead><tr><th>Pessoa</th><th class="num">Acumulado</th>
+  <th class="num">Revisando</th><th class="num">Espera causada</th>
+  <th class="num">Fechadas</th><th class="num">Convencao</th></tr></thead>
+<tbody>{pessoas or '<tr><td colspan="6" class="muted">Sem tempo registrado.</td></tr>'}</tbody></table>
+</section>
+
+<section>
+<h2 style="margin-top:0">Onde o fluxo travou</h2>
+<p class="sub">Media e mediana de permanencia por passagem na coluna, dentro desta sprint.</p>
+<table><thead><tr><th>Coluna</th><th class="num">Media</th><th class="num">Mediana</th>
+  <th class="num">Maximo</th><th class="num">Passagens</th><th class="num">Agora</th></tr></thead>
+<tbody>{colunas or '<tr><td colspan="6" class="muted">Sem passagens.</td></tr>'}</tbody></table>
+</section>
+
+<section>
+<h2 style="margin-top:0">Issues mais demoradas</h2>
+<p class="sub">As {len(data['issues'])} mais longas de {data['issues_total']} issues com
+  tempo registrado, ranqueadas pelo tempo em {e(focus or 'coluna de trabalho')}.</p>
+<table><thead><tr><th>Issue</th><th>Responsavel</th><th>Coluna</th>
+  <th class="num">{e(focus or 'Trabalho')}</th><th class="num">Lead time</th></tr></thead>
+<tbody>{issues or '<tr><td colspan="5" class="muted">Sem issues.</td></tr>'}</tbody></table>
+</section>
+
+<section>
+<h2 style="margin-top:0">Commits fora da convencao</h2>
+<p class="sub">Regra: <code>{e(commits['rule'])}</code>.
+  <b style="color:{_rate_color(commits['pct'])}">{commits['off']}</b> de
+  {commits['total']} commits desta sprint fogem dela.
+  A sprint de um commit e a da issue que ele cita.{_outsiders_html(commits.get('outsiders'))}</p>
+<table><thead><tr><th>Commit</th><th>Mensagem</th><th>Autor</th><th>O que quebra</th></tr></thead>
+<tbody>{infratores or '<tr><td colspan="4" class="muted">Nenhum commit fora do padrao.</td></tr>'}</tbody></table>
+</section>
+
+<footer>dashGit · dados do cache local sincronizado em
+{e((data['project'].get('synced_at') or '')[:16].replace('T', ' '))} UTC</footer>
+</main></body></html>"""
