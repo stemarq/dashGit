@@ -23,3 +23,16 @@ MILESTONE_DESC = (
 )
 
 
+def _resolve(project: str | None) -> int:
+    settings = get_settings()
+    candidate = project or (settings.project_list[0] if settings.project_list else None)
+    project_id = metrics.resolve_project_id(candidate)
+    if project_id is None:
+        raise HTTPException(
+            404,
+            f"Projeto '{candidate or '(nenhum)'}' nao esta no cache. "
+            "Rode POST /api/sync?project=grupo/projeto primeiro.",
+        )
+    return project_id
+
+
