@@ -80,3 +80,14 @@ async def sync(
     return {"synced": results}
 
 
+@router.get("/projects")
+def projects() -> list[dict[str, Any]]:
+    with session() as conn:
+        rows = conn.execute(
+            "SELECT p.id, p.path, p.name, p.web_url, p.synced_at,"
+            " (SELECT COUNT(*) FROM issues i WHERE i.project_id = p.id) AS issues"
+            " FROM projects p ORDER BY p.path"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
