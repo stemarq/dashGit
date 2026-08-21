@@ -155,3 +155,28 @@ def _outsiders(project_id: int) -> dict[str, Any]:
     return commit_metrics.outsiders_note(fora)
 
 
+def _sprint_commits(project_id: int, milestone: str) -> list[dict[str, Any]]:
+    """Commits da sprint, pela issue citada, ja com o veredito da convencao.
+
+    Commit de quem nao e do time nao entra: o relatorio mede o trabalho da
+    equipe, e o bot do template nao faz parte dela.
+    """
+    milestone_of = _issue_milestones(project_id)
+    dentro, _ = commit_metrics.split_members(project_id, commit_metrics._rows(project_id))
+    out = []
+    for row in dentro:
+        iid = commit_metrics.issue_ref(row["title"])
+        if iid is None or milestone_of.get(iid) != milestone:
+            continue
+        out.append({
+            "short_id": row["short_id"],
+            "title": row["title"],
+            "author": row["author_name"],
+            "committed_at": row["committed_at"],
+            "web_url": row["web_url"],
+            "issue": iid,
+            "convention": commit_metrics.check_title(row["title"]),
+        })
+    return out
+
+
