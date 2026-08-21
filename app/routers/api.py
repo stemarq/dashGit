@@ -185,3 +185,19 @@ def columns(
     return metrics.column_report(project_id, label_list, milestone=milestone)
 
 
+@router.get("/metrics/milestones")
+def milestone_metrics(
+    project: str | None = None,
+    labels: str | None = None,
+    limit: int = Query(8, ge=1, le=50, description="Quantas sprints comparar"),
+) -> dict[str, Any]:
+    """Comparativo entre sprints: tempo por coluna, throughput e lead time.
+
+    Ignora o filtro de periodo de proposito — cada sprint e comparada pela
+    sua duracao inteira.
+    """
+    project_id = _resolve(project)
+    label_list = [x.strip() for x in labels.split(",")] if labels else None
+    return metrics.milestone_report(project_id, label_list, limit=limit)
+
+
