@@ -483,3 +483,136 @@ def _outsiders_html(nota: dict[str, Any] | None) -> str:
             f" — {quem}.")
 
 
+def render_html(data: dict[str, Any], autoprint: bool = False) -> str:
+    """Monta o relatorio como uma pagina autocontida.
+
+    `autoprint` abre a caixa de impressao assim que a pagina carrega — e por
+    ela que sai o PDF, usando o "Salvar como PDF" do proprio navegador. O
+    arquivo baixado como HTML continua sem script nenhum.
+    """
+    e = escape
+    project = data["project"].get("path") or f"projeto {data['project_id']}"
+    gerado = datetime.fromisoformat(data["generated_at"]).astimezone()
+    sprints = data["sprints"]
+    focus = data["focus_label"]
+
+    linhas = []
+    for s in sprints:
+        d = s["delta"]
+        linhas.append(f"""<tr>
+          <td><b>{e(s['milestone'])}</b>
+            <div class="muted">{e(_periodo(s))}</div>
+            {f'<div class="muted">vs {e(s["compared_to"])}</div>' if s['compared_to'] else ''}</td>
+          <td class="num">{s['closed_issues']}/{s['issues']}
+            {_delta_html(d.get('completion_pp'), 'pp')}</td>
+          <td class="num">{e(s['by_label'].get(focus, {}).get('human', '0m'))}
+            {_delta_html(d.get('focus_hours'))}</td>
+          <td class="num">{e(_fmt_h(s['total_hours']))}
+            {_delta_html(d.get('total_hours'))}</td>
+          <td class="num">{e(_fmt_h(s['avg_lead_hours']))}
+            {_delta_html(d.get('avg_lead_hours'), lower_is_better=True)}</td>
+          <td class="num">{s['commits']}{_delta_html(d.get('commits'))}</td>
+          <td class="num">{'—' if s['convention_pct'] is None else f"{s['convention_pct']:g}%"}
+            {_delta_html(d.get('convention_pp'), 'pp')}</td>
+        </tr>""")
+
+    colunas = data["columns"]
+    cores = _palette(colunas)
+    # cada coluna na sua propria escala: comparar Doing com Backlog na mesma
+    # regua esconderia a variacao das colunas curtas
+    teto = {c: max([s["by_label"].get(c, {}).get("hours", 0.0) for s in sprints] + [1.0])
+            for c in colunas}
+    por_coluna = []
+    for s in sprints:
+        celulas = ""
+        for c in colunas:
+            valor = s["by_label"].get(c)
+            celulas += (f'<td class="num">{e(valor["human"]) if valor else "—"}'
+                        + _bar((valor["hours"] if valor else 0) / teto[c], cores[c])
+                        + "</td>")
+        por_coluna.append(f"<tr><td><b>{e(s['milestone'])}</b></td>{celulas}</tr>")
+
+    pessoas = []
+    for s in sprints:
+        if not s["people"]:
+            continue
+        topo = max((p["hours"] for p in s["people"]), default=1) or 1
+        itens = "".join(f"""<tr>
+            <td>{e(p['contributor'])}</td>
+            <td class="num">{e(p['human'])}{_bar(p['hours'] / topo, SERIES[0])}</td>
+            <td class="num">{e(_fmt_h(p['review_hours']))}</td>
+            <td class="num">{p['closed_issues']}/{p['issues']}</td>
+          </tr>""" for p in s["people"])
+        pessoas.append(f"""<section>
+          <h2 style="margin-top:0">{e(s['milestone'])} — quem fez o que</h2>
+          <table><thead><tr><th>Pessoa</th><th class="num">Acumulado</th>
+            <th class="num">Revisando</th><th class="num">Fechadas</th></tr></thead>
+          <tbody>{itens}</tbody></table></section>""")
+
+    conv = data["convention"]
+    rotulos = conv["reason_labels"]
+    autores = "".join(f"""<tr>
+        <td>{e(a['member'] or a['author'])}
+          {'' if a['member'] else '<span class="pill">fora do time</span>'}
+          <div class="muted">{e(a['author'])}</div></td>
+        <td class="num"><b style="color:{_rate_color(a['pct'])}">{a['pct']:g}%</b>
+          {_bar(a['pct'] / 100, _rate_color(a['pct']))}</td>
+        <td class="num">{a['ok']}/{a['commits']}</td>
+        <td>{''.join(f'<span class="pill off">{e(rotulos.get(k, k))}: {v}</span>'
+                     for k, v in a['reasons'].items())}</td>
+      </tr>""" for a in conv["authors"])
+
+    return f"""<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dashGit — relatorio de sprints — {e(project)}</title>
+<style>{_CSS}</style>{_PRINT_JS if autoprint else ''}</head><body><main>
+{_PRINT_BAR if autoprint else ''}
+<h1>Relatorio comparativo de sprints</h1>
+<p class="sub">{e(project)} · gerado em {gerado.strftime('%d/%m/%Y %H:%M')}</p>
+<p class="sub">Cada sprint e medida pela sua duracao inteira. A variacao e contra a
+sprint imediatamente anterior; taxas comparam em pontos percentuais (pp).</p>
+
+<section>
+<h2 style="margin-top:0">Visao por sprint</h2>
+<table>
+<thead><tr><th>Sprint</th><th class="num">Fechadas</th>
+  <th class="num">Tempo em {e(focus or 'coluna de trabalho')}</th>
+  <th class="num">Acumulado</th><th class="num">Lead time medio</th>
+  <th class="num">Commits</th><th class="num">Convencao</th></tr></thead>
+<tbody>{''.join(linhas) or '<tr><td colspan="7" class="muted">Sem sprints.</td></tr>'}</tbody>
+</table>
+</section>
+
+<section>
+<h2 style="margin-top:0">Tempo por coluna</h2>
+<table><thead><tr><th>Sprint</th>{''.join(
+  f'<th class="num"><span class="tag">{_swatch(cores[c])}{e(c)}</span></th>' for c in colunas)}</tr></thead>
+<tbody>{''.join(por_coluna)}</tbody></table>
+</section>
+
+{''.join(pessoas)}
+
+<section>
+<h2 style="margin-top:0">Conventional commits</h2>
+<p class="sub">Regra: <code>{e(conv['rule'])}</code>. Tipos aceitos:
+  {', '.join(f'<code>{e(t)}</code>' for t in conv['types'])}.
+  Merge commits ficam de fora. No total do projeto,
+  <b>{conv['totals']['pct']:g}%</b> dos {conv['totals']['commits']} commits do time
+  seguem a convencao.{_outsiders_html(data.get('outsiders'))}{f" {data['orphan_commits']} commits nao citam issue e por isso nao"
+  " entram em nenhuma sprint." if data['orphan_commits'] else ""}</p>
+<table><thead><tr><th>Pessoa</th><th class="num">Aderencia</th>
+  <th class="num">Ok</th><th>O que quebra</th></tr></thead>
+<tbody>{autores or '<tr><td colspan="4" class="muted">Sem commits.</td></tr>'}</tbody></table>
+</section>
+
+{f'<p class="sub">Fora das sprints: {data["unscheduled"]["issues"]} issues sem'
+  f' milestone ({data["unscheduled"]["closed_issues"]} fechadas,'
+  f' {escape(data["unscheduled"]["human"])} acumuladas). Elas nao entram na comparacao.</p>'
+  if data.get('unscheduled') else ''}
+
+<footer>dashGit · dados do cache local sincronizado em
+{e((data['project'].get('synced_at') or '')[:16].replace('T', ' '))} UTC</footer>
+</main></body></html>"""
+
+
