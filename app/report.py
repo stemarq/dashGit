@@ -425,3 +425,15 @@ def _fmt_h(hours: float | None) -> str:
     return f"{int(hours // 24)}d {round(hours % 24)}h"
 
 
+def _periodo(sprint: dict[str, Any]) -> str:
+    """Datas da sprint — nem todo time preenche as datas da milestone."""
+    inicio, fim = sprint.get("start_date"), sprint.get("due_date")
+    if inicio and fim:
+        return f"{inicio} — {fim}"
+    if fim:
+        return f"entrega {fim}"
+    if inicio:
+        return f"inicio {inicio}"
+    return "encerrada" if sprint.get("state") == "closed" else "em andamento"
+
+
