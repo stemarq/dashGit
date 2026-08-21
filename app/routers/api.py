@@ -290,3 +290,19 @@ def commit_convention(
     )
 
 
+@router.get("/report/sprints")
+def report_sprints(
+    project: str | None = None,
+    labels: str | None = None,
+    limit: int = Query(8, ge=1, le=50, description="Quantas sprints comparar"),
+) -> dict[str, Any]:
+    """Relatorio comparativo entre sprints: board, pessoas e commits juntos.
+
+    Ignora o filtro de periodo de proposito — cada sprint e comparada pela sua
+    duracao inteira, como no card de sprints da visao geral.
+    """
+    project_id = _resolve(project)
+    label_list = [x.strip() for x in labels.split(",")] if labels else None
+    return sprint_report_builder.sprint_report(project_id, label_list, limit=limit)
+
+
