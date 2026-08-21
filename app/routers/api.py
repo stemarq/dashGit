@@ -241,3 +241,35 @@ def commit_authors(project: str | None = None) -> dict[str, Any]:
     return {"project_id": project_id, "authors": autores}
 
 
+@router.get("/metrics/issues")
+def issues(
+    project: str | None = None,
+    labels: str | None = None,
+    milestone: str | None = Query(None, description=MILESTONE_DESC),
+    state: str | None = Query(None, pattern="^(opened|closed)$"),
+    sort: str = Query(
+        "focus",
+        pattern="^(focus|working|lead_time)$",
+        description="focus = tempo na coluna de trabalho (padrao);"
+        " working = tempo somado em todas as colunas contadas;"
+        " lead_time = criacao ate fechamento",
+    ),
+    limit: int = Query(200, ge=1, le=2000),
+) -> dict[str, Any]:
+    """Drill-down: linha do tempo de colunas de cada issue.
+
+    O ranking padrao e por tempo na coluna de trabalho, nao por lead time:
+    uma issue esquecida no Backlog nao e uma issue demorada.
+    """
+    project_id = _resolve(project)
+    label_list = [x.strip() for x in labels.split(",")] if labels else None
+    data = metrics.issue_report(project_id, label_list, state, milestone=milestone, sort=sort)
+    return {
+        "project_id": project_id,
+        "focus_label": data["focus_label"],
+        "sorted_by": data["sorted_by"],
+        "count": len(data["issues"]),
+        "issues": data["issues"][:limit],
+    }
+
+
