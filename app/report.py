@@ -473,3 +473,13 @@ _PRINT_BAR = """
   "Destino". Se ela nao abrir, use Ctrl+P.</p>"""
 
 
+def _outsiders_html(nota: dict[str, Any] | None) -> str:
+    """A frase que declara o que ficou de fora. Excluir calado seria pior que
+    incluir: quem le tem de saber que 18 commits nao entraram na conta."""
+    if not nota or not nota["commits"]:
+        return ""
+    quem = ", ".join(f"{escape(a['author'])} ({a['commits']})" for a in nota["authors"])
+    return (f" Fora da conta: {nota['commits']} commits de quem nao e do time"
+            f" — {quem}.")
+
+
