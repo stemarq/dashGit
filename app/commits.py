@@ -76,3 +76,44 @@ def outsiders_note(rows: list[Any]) -> dict[str, Any]:
     }
 
 
+def author_aliases(project_id: int, author: str) -> set[str]:
+    """Todos os nomes de git da mesma pessoa, em minusculas.
+
+    Filtrar por "Lucas Delmirio da Silva" tem de trazer os commits assinados
+    como `lucas.delmirio` — sao a mesma pessoa, e o filtro e por contribuinte,
+    nao por identidade de git. Quando o nome pedido nao casa com ninguem do
+    time, vale so a correspondencia exata (nome ou e-mail).
+    """
+    alvo = author.strip().lower()
+    members = member_names(project_id)
+    with session() as conn:
+        assinaturas = conn.execute(
+            "SELECT DISTINCT author_name, author_email FROM commits WHERE project_id = ?",
+            (project_id,),
+        ).fetchall()
+
+    exatos = {r["author_name"].lower() for r in assinaturas
+              if (r["author_name"] or "").lower() == alvo
+              or (r["author_email"] or "").lower() == alvo}
+
+    # a pessoa pedida pode vir como nome do GitLab ou como assinatura do git
+    membro = next((m for m in members if m.lower() == alvo), None) or match_member(
+        author, members
+    )
+    if not membro:
+        # pedido por e-mail: quem responde e a assinatura que aquele e-mail usa
+        for r in assinaturas:
+            if r["author_name"] and r["author_name"].lower() in exatos:
+                membro = match_member(r["author_name"], members, r["author_email"])
+                if membro:
+                    break
+    if not membro:
+        return exatos or {alvo}
+
+    return exatos | {
+        r["author_name"].lower() for r in assinaturas
+        if r["author_name"]
+        and match_member(r["author_name"], members, r["author_email"]) == membro
+    }
+
+
