@@ -434,3 +434,121 @@ def convention_by_issue(project_id: int, include_merges: bool = False) -> dict[i
     return out
 
 
+def commit_report(
+    project_id: int,
+    since: datetime | None = None,
+    until: datetime | None = None,
+    author: str | None = None,
+    include_merges: bool = False,
+    only_off: bool = False,
+) -> dict[str, Any]:
+    """Volume, autores, ritmo diario e horario dos commits.
+
+    `only_off` recorta *apenas a listagem* de commits recentes para os que
+    fogem da convencao. As somas continuam sobre todos: filtrar a lista e uma
+    lente de leitura; encolher os totais junto seria mentir sobre o volume.
+    """
+    now = datetime.now(timezone.utc)
+    rows, fora_do_time = split_members(
+        project_id, _rows(project_id, since, until, author, include_merges)
+    )
+
+    by_author: dict[str, dict[str, Any]] = {}
+    by_day: dict[str, dict[str, int]] = defaultdict(
+        lambda: {"commits": 0, "additions": 0, "deletions": 0}
+    )
+    heat = [[0] * 24 for _ in range(7)]
+    additions = deletions = 0
+
+    for r in rows:
+        when = parse_ts(r["committed_at"])
+        name = (r["author_name"] or "?").strip()
+        person = by_author.setdefault(name, {
+            "author": name, "email": r["author_email"], "commits": 0,
+            "additions": 0, "deletions": 0, "days": set(),
+            "first_at": r["committed_at"], "last_at": r["committed_at"],
+        })
+        person["commits"] += 1
+        person["additions"] += r["additions"] or 0
+        person["deletions"] += r["deletions"] or 0
+        additions += r["additions"] or 0
+        deletions += r["deletions"] or 0
+
+        if when:
+            local = when.astimezone()          # ritmo e horario sao locais
+            key = local.date().isoformat()
+            person["days"].add(key)
+            day = by_day[key]
+            day["commits"] += 1
+            day["additions"] += r["additions"] or 0
+            day["deletions"] += r["deletions"] or 0
+            heat[local.weekday()][local.hour] += 1
+            person["first_at"] = min(person["first_at"], r["committed_at"])
+            person["last_at"] = max(person["last_at"], r["committed_at"])
+
+    autores = []
+    for person in by_author.values():
+        dias = len(person["days"]) or 1
+        autores.append({
+            "author": person["author"],
+            "email": person["email"],
+            "commits": person["commits"],
+            "additions": person["additions"],
+            "deletions": person["deletions"],
+            "net": person["additions"] - person["deletions"],
+            "active_days": len(person["days"]),
+            "commits_per_active_day": round(person["commits"] / dias, 2),
+            "avg_size": round((person["additions"] + person["deletions"]) / person["commits"], 1)
+            if person["commits"] else 0,
+            "first_at": person["first_at"],
+            "last_at": person["last_at"],
+        })
+    autores.sort(key=lambda a: -a["commits"])
+
+    series, granularity = _series(by_day)
+
+    # cada commit da listagem carrega o veredito da convencao, para a tabela
+    # poder sinalizar sem uma segunda chamada
+    marcados = [
+        {
+            "short_id": r["short_id"],
+            "title": r["title"],
+            "author": r["author_name"],
+            "committed_at": r["committed_at"],
+            "additions": r["additions"],
+            "deletions": r["deletions"],
+            "web_url": r["web_url"],
+            "issue": issue_ref(r["title"]),
+            "convention": check_title(r["title"]),
+        }
+        for r in rows
+    ]
+    fora = [c for c in marcados if c["convention"]]
+    recent = (fora if only_off else marcados)[:30]
+
+    dias_ativos = len(by_day)
+    return {
+        "project_id": project_id,
+        "window": {
+            "since": since.isoformat() if since else None,
+            "until": (until or now).isoformat(),
+        },
+        "totals": {
+            "commits": len(rows),
+            "authors": len(by_author),
+            "additions": additions,
+            "deletions": deletions,
+            "net": additions - deletions,
+            "active_days": dias_ativos,
+            "commits_per_active_day": round(len(rows) / dias_ativos, 2) if dias_ativos else 0,
+            "avg_size": round((additions + deletions) / len(rows), 1) if rows else 0,
+        },
+        "authors": autores,
+        "granularity": granularity,
+        "series": series,
+        "heatmap": {"weekdays": WEEKDAYS, "counts": heat},
+        "recent": recent,
+        "off_convention": len(fora),
+        "reason_labels": REASON_LABELS,
+        "outsiders": outsiders_note(fora_do_time),
+    }
