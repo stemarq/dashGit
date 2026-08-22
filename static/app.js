@@ -162,3 +162,21 @@ function dailySeries(issues, labels, sinceDays) {
 
 const sumDay = (d) => Object.values(d.values).reduce((a, b) => a + b, 0);
 
+function windowDelta(series) {
+  // metade recente contra a metade anterior — sem periodo, sem delta
+  if (series.length < 4) return null;
+  const half = Math.floor(series.length / 2);
+  const prev = series.slice(0, half).reduce((a, d) => a + sumDay(d), 0);
+  const curr = series.slice(half).reduce((a, d) => a + sumDay(d), 0);
+  if (!prev) return null;
+  return ((curr - prev) / prev) * 100;
+}
+
+/* ── primitivas de grafico ────────────────────────────────────────────── */
+
+function svgEl(tag, attrs = {}) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
