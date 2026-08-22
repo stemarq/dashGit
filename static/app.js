@@ -838,3 +838,17 @@ function renderIssuesTable(data, query) {
 const fmtWhen = (iso) => new Date(iso).toLocaleString("pt-BR",
   { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 
+function openIssue(iid) {
+  const issue = (state.issues?.issues || []).find((i) => i.iid === iid);
+  if (!issue) return;
+  renderIssueDetail(issue, state.issues.focus_label);
+  $("issue-modal").hidden = false;
+  document.body.style.overflow = "hidden";
+  $("i-close").focus();
+}
+
+function closeIssue() {
+  $("issue-modal").hidden = true;
+  document.body.style.overflow = "";
+}
+
