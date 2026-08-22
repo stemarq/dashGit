@@ -97,3 +97,12 @@ const tip = {
   hide() { $("tooltip").classList.remove("on"); },
 };
 
+const tipRows = (title, rows) =>
+  `<div class="tt-title">${esc(title)}</div>` +
+  rows.map((r) => `<div class="tt-row">
+      <span class="swatch round" style="background:${r.color || "transparent"}"></span>
+      <span>${esc(r.label)}</span><b>${esc(r.value)}</b>
+    </div>`).join("");
+
+/* ── cores por coluna ─────────────────────────────────────────────────── */
+
