@@ -494,3 +494,55 @@ code {
 .att-row .n { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .att-row .glyph { display: grid; place-items: center; }
 
+/* ── tabela ─────────────────────────────────────────────────────────── */
+
+.table-wrap { overflow-x: auto; margin: 0 -18px -18px; padding: 0 18px 4px; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th {
+  text-align: left; font-weight: 500; font-size: 12px; color: var(--ink-3);
+  padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+td { padding: 11px 12px; border-bottom: 1px solid var(--line); }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: var(--surface-2); }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+/* nomes completos sao longos; sem limite a coluna sozinha passa de 400px */
+td .row-name { max-width: 180px; }
+td .row-name span:not(.avatar) {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tag-pill {
+  display: inline-flex; align-items: center; gap: 6px; margin: 1px 0;
+  background: var(--surface-3); border-radius: 999px;
+  padding: 3px 10px 3px 7px; font-size: 12px; color: var(--ink-2);
+  white-space: nowrap;
+}
+.muted { color: var(--ink-3); }
+.banner {
+  padding: 11px 14px; border-radius: var(--radius-sm);
+  background: var(--neg-soft); color: var(--ink);
+  border: 1px solid color-mix(in srgb, var(--neg) 25%, transparent);
+  font-size: 13px;
+}
+.tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.tag-plain {
+  font-size: 10.5px; color: var(--ink-3); letter-spacing: .02em;
+  border: 1px solid var(--line-2); border-radius: 5px; padding: 1px 5px;
+  white-space: nowrap;
+}
+
+.mini-bar {
+  height: 4px; border-radius: 999px; background: var(--surface-3);
+  margin-top: 5px; overflow: hidden; min-width: 54px;
+}
+.mini-bar i { display: block; height: 100%; border-radius: 999px; }
+#excluded-note b { color: var(--ink-2); font-weight: 500; }
+/* coluna auxiliar: some quando o espaco aperta, em vez de gerar rolagem */
+@media (max-width: 1540px) {
+  .col-extra { display: none; }
+}
+.title-cell { max-width: 290px; }
+.title-cell > a {
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
