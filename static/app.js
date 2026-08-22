@@ -474,3 +474,74 @@ function renderTreemap(totals, columnStats) {
 
 /* ── barras verticais de gargalo ──────────────────────────────────────── */
 
+function renderBars(columns) {
+  const host = $("bars");
+  host.innerHTML = "";
+  const data = columns.filter((c) => c.avg_hours > 0 || c.wip > 0);
+  if (!data.length) { host.innerHTML = `<div class="empty">Sem passagens registradas.</div>`; return; }
+
+  const W = host.clientWidth || 720, H = 210, padT = 28, padB = 30;
+  const ih = H - padT - padB;
+  const max = Math.max(...data.map((c) => Math.max(c.avg_hours, c.median_hours))) || 1;
+  const slot = W / data.length;
+  const bw = Math.min(58, slot * 0.5);
+
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img" });
+  svg.setAttribute("aria-label", "Tempo medio por coluna");
+
+  data.forEach((c, i) => {
+    const cx = slot * i + slot / 2;
+    const h = (c.avg_hours / max) * ih;
+    const y = padT + ih - h;
+    const color = colorOf(c.label);
+
+    const bar = svgEl("rect", {
+      x: cx - bw / 2, y, width: bw, height: Math.max(h, 3), rx: 4, fill: color,
+    });
+    bar.style.cursor = "default";
+    bar.addEventListener("mousemove", (ev) => tip.show(
+      tipRows(c.label, [
+        { color, label: "Media", value: c.avg_human },
+        { label: "Mediana", value: fmtH(c.median_hours) },
+        { label: "Maximo", value: fmtH(c.max_hours) },
+        { label: "Passagens", value: String(c.completed_passes) },
+        { label: "Cards agora", value: String(c.wip) },
+      ]), ev.clientX, ev.clientY));
+    bar.addEventListener("mouseleave", tip.hide);
+    svg.appendChild(bar);
+
+    // marca da mediana — pode ficar acima do topo da barra quando a
+    // distribuicao e assimetrica, entao o rotulo sobe junto
+    let labelY = y;
+    if (c.median_hours > 0) {
+      const my = padT + ih - (c.median_hours / max) * ih;
+      svg.appendChild(svgEl("line", {
+        x1: cx - bw / 2 - 3, x2: cx + bw / 2 + 3, y1: my, y2: my,
+        stroke: cssVar("--ink"), "stroke-width": 2, "stroke-linecap": "round", opacity: .8,
+      }));
+      labelY = Math.min(labelY, my);
+    }
+
+    const val = svgEl("text", {
+      x: cx, y: labelY - 9, "text-anchor": "middle",
+      style: `font-size:12px;font-weight:600;fill:${cssVar("--ink")}`,
+    });
+    val.textContent = c.avg_human;
+    svg.appendChild(val);
+
+    const lab = svgEl("text", {
+      x: cx, y: H - 10, "text-anchor": "middle",
+      style: `font-size:11.5px;fill:${cssVar("--ink-2")}`,
+    });
+    lab.textContent = c.label.length > 14 ? c.label.slice(0, 13) + "…" : c.label;
+    svg.appendChild(lab);
+  });
+
+  svg.appendChild(svgEl("line", {
+    x1: 0, x2: W, y1: padT + ih, y2: padT + ih, stroke: cssVar("--line-2"), "stroke-width": 1,
+  }));
+  host.appendChild(svg);
+}
+
+/* ── blocos de conteudo ───────────────────────────────────────────────── */
+
