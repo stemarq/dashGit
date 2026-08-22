@@ -767,3 +767,17 @@ function renderAttention(issues, columnData) {
     </div>`).join("");
 }
 
+function renderColumnsTable(columns) {
+  $("cols-table").innerHTML =
+    `<thead><tr><th>Coluna</th><th class="num">Media</th><th class="num">Mediana</th>
+      <th class="num">Maximo</th><th class="num">Passagens</th><th class="num">Agora</th></tr></thead>
+     <tbody>` + (columns.length ? columns.map((c) => `<tr>
+        <td><span class="tag-pill"><i class="swatch round" style="background:${colorOf(c.label)}"></i>${esc(c.label)}</span></td>
+        <td class="num">${esc(c.avg_human)}</td>
+        <td class="num">${esc(fmtH(c.median_hours))}</td>
+        <td class="num">${esc(fmtH(c.max_hours))}</td>
+        <td class="num">${c.completed_passes}</td>
+        <td class="num">${c.wip}</td></tr>`).join("")
+      : `<tr><td colspan="6" class="muted">Sem dados.</td></tr>`) + `</tbody>`;
+}
+
