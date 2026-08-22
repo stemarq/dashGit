@@ -84,3 +84,16 @@ function toast(msg, ms = 3200) {
 
 /* ── tooltip compartilhado ────────────────────────────────────────────── */
 
+const tip = {
+  show(html, x, y) {
+    const el = $("tooltip");
+    el.innerHTML = html;
+    el.classList.add("on");
+    const r = el.getBoundingClientRect();
+    const left = Math.min(Math.max(8, x - r.width / 2), window.innerWidth - r.width - 8);
+    el.style.left = `${left + window.scrollX}px`;
+    el.style.top = `${y - r.height - 12 + window.scrollY}px`;
+  },
+  hide() { $("tooltip").classList.remove("on"); },
+};
+
