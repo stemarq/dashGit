@@ -342,3 +342,21 @@ h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.03em; margin: 0; }
 .swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
 .swatch.round { border-radius: 50%; }
 
+/* ── barras empilhadas por contribuidor ─────────────────────────────── */
+
+.rows { display: grid; gap: 2px; }
+.row-item {
+  display: grid; grid-template-columns: 150px 1fr 92px;
+  align-items: center; gap: 14px;
+  padding: 9px 8px; border-radius: var(--radius-sm); cursor: default;
+}
+.row-item:hover { background: var(--surface-2); }
+.row-name { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.row-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-name .avatar { width: 24px; height: 24px; font-size: 10px; }
+.stack { display: flex; height: 22px; gap: 2px; }
+.stack i { display: block; border-radius: 3px; min-width: 2px; }
+.stack i:first-child { border-radius: 4px 3px 3px 4px; }
+.stack i:last-child { border-radius: 3px 4px 4px 3px; }
+.row-total { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
+
