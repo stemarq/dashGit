@@ -434,3 +434,43 @@ function squarify(items, x, y, w, h, out = []) {
     : squarify(tail, x, y + len, w, h - len, out);
 }
 
+function renderTreemap(totals, columnStats) {
+  const host = $("treemap");
+  const items = Object.entries(totals)
+    .map(([label, v]) => ({ label, value: v.hours, human: v.human }))
+    .filter((i) => i.value > 0)
+    .sort((a, b) => b.value - a.value);
+  host.innerHTML = "";
+  if (!items.length) { host.innerHTML = `<div class="empty">Sem dados no periodo.</div>`; return; }
+
+  const W = host.clientWidth || 360, H = 260, sum = items.reduce((a, i) => a + i.value, 0);
+  const wipOf = Object.fromEntries((columnStats || []).map((c) => [c.label, c.wip]));
+
+  for (const t of squarify(items, 0, 0, W, H)) {
+    const color = colorOf(t.label);
+    // limao e roxo claro pedem tinta escura; o resto, tinta clara
+    const light = ["--s2", "--s5"].some((v) => cssVar(v).toLowerCase() === color.toLowerCase());
+    const el = document.createElement("div");
+    el.className = `tile ${light ? "on-light" : "on-dark"}`;
+    el.style.cssText = `left:${t.x + 2}px;top:${t.y + 2}px;width:${t.w - 4}px;height:${t.h - 4}px;background:${color}`;
+    const compact = t.h < 54 || t.w < 84;
+    const roomy = t.w >= 132;
+    el.innerHTML = `
+      <div class="t-head"><span class="swatch round" style="background:currentColor;opacity:.55"></span>
+        ${esc(t.label)}</div>
+      ${compact ? "" : `<div class="t-foot">
+        <span class="t-val">${Math.round((t.value / sum) * 100)}%</span>
+        ${roomy ? `<span class="t-delta">${esc(t.human)}</span>` : ""}</div>`}`;
+    el.addEventListener("mousemove", (ev) => tip.show(
+      tipRows(t.label, [
+        { color, label: "Tempo acumulado", value: t.human },
+        { label: "Participacao", value: `${((t.value / sum) * 100).toFixed(1)}%` },
+        { label: "Cards agora", value: String(wipOf[t.label] ?? 0) },
+      ]), ev.clientX, ev.clientY));
+    el.addEventListener("mouseleave", tip.hide);
+    host.appendChild(el);
+  }
+}
+
+/* ── barras verticais de gargalo ──────────────────────────────────────── */
+
