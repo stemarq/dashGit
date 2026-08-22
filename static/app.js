@@ -1170,3 +1170,13 @@ $("sync").addEventListener("click", async () => {
   }
 });
 
+$("theme-toggle").addEventListener("click", () => {
+  const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem("dashgit-theme", next);
+  if (state.contributors) {
+    assignColors(state.order);
+    safeRefresh();
+  }
+});
+
