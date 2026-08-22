@@ -675,3 +675,69 @@ function renderContributors(data) {
   });
 }
 
+function renderSprints(data, selected) {
+  const host = $("sprints");
+  const cols = data.columns;
+  renderLegend($("sprint-legend"), cols);
+
+  if (!data.milestones.length) {
+    host.innerHTML = `<div class="empty">Nenhuma sprint no cache. As milestones vem no proximo sync.</div>`;
+    return;
+  }
+  const max = Math.max(...data.milestones.map((m) => m.total_hours)) || 1;
+
+  host.innerHTML = data.milestones.map((m) => {
+    const width = Math.max((m.total_hours / max) * 100, 4);
+    const segs = cols.map((col) => {
+      const b = m.by_label[col];
+      if (!b || !b.hours) return "";
+      const pct = (b.hours / m.total_hours) * 100;
+      return `<i style="flex:${pct};background:${colorOf(col)}"
+                 data-label="${esc(col)}" data-value="${esc(b.human)}"></i>`;
+    }).join("");
+    const dot = m.state === "active" ? "active" : m.state === "closed" ? "closed" : "";
+    return `<button class="sprint" data-milestone="${esc(m.milestone)}"
+                    aria-pressed="${selected === m.milestone}">
+      <div>
+        <div class="sprint-name">
+          <span class="dot-state ${dot}"></span><b>${esc(m.milestone)}</b>
+        </div>
+        <div class="sprint-when">${esc(fmtRange(m.start_date, m.due_date))}</div>
+      </div>
+      <div>
+        <div class="stack" style="width:${width}%"
+             data-name="${esc(m.milestone)}">${segs}</div>
+        <div class="sprint-when">${esc(m.total_human)} acumuladas ·
+          ${m.contributors} ${m.contributors === 1 ? "pessoa" : "pessoas"}</div>
+      </div>
+      <div>
+        <div class="progress-label"><b>${m.completion}%</b>
+          <span>${m.closed_issues}/${m.issues} fechadas</span></div>
+        <div class="progress"><i style="width:${Math.min(m.completion, 100)}%"></i></div>
+      </div>
+      <div class="row-total">${esc(fmtH(m.avg_lead_hours))}
+        <div class="sprint-when" style="text-align:right">lead medio</div>
+      </div>
+    </button>`;
+  }).join("");
+
+  host.querySelectorAll(".stack i").forEach((seg) => {
+    seg.addEventListener("mousemove", (ev) => {
+      ev.stopPropagation();
+      tip.show(tipRows(seg.parentElement.dataset.name,
+        [{ color: seg.style.background, label: seg.dataset.label, value: seg.dataset.value }]),
+        ev.clientX, ev.clientY);
+    });
+    seg.addEventListener("mouseleave", tip.hide);
+  });
+
+  host.querySelectorAll(".sprint").forEach((row) => {
+    row.addEventListener("click", () => {
+      const value = row.dataset.milestone;
+      // clicar na sprint ja selecionada volta para "todas"
+      $("milestone").value = $("milestone").value === value ? "" : value;
+      safeRefresh();
+    });
+  });
+}
+
