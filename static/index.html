@@ -561,5 +561,35 @@
 </div>
 
 <!-- drill-down de uma issue: quem trabalhou nela e por quanto tempo -->
+<div class="modal" id="issue-modal" hidden>
+  <div class="modal-back" data-close></div>
+  <div class="modal-panel card" role="dialog" aria-modal="true" aria-labelledby="i-title">
+    <div class="card-head">
+      <span class="glyph">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+      </span>
+      <div style="min-width:0">
+        <h2 id="i-title"></h2>
+        <div class="card-sub" id="i-meta" style="margin:0"></div>
+      </div>
+      <button class="icon-btn round" id="i-close" title="Fechar" data-close>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="stats" id="i-stats"></div>
+    <div class="card-sub" style="margin-top:22px" id="i-people-sub"></div>
+    <div id="i-people"></div>
+    <div class="card-sub" style="margin-top:22px">Linha do tempo do card</div>
+    <div id="i-timeline"></div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+<div class="toast" id="toast"></div>
+
+<script src="/static/app.js"></script>
+<script src="/static/contributors.js"></script>
+<script src="/static/commits.js"></script>
+<script src="/static/report.js"></script>
 </body>
 </html>
