@@ -143,6 +143,134 @@
         </button>
       </div>
 
+      <div id="view-overview">
+
+      <!-- trio de indicadores -->
+      <section class="card">
+        <div class="card-head">
+          <span class="glyph">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          </span>
+          <h2>Ritmo do board</h2>
+        </div>
+        <p class="card-sub" id="stats-sub">Comparado com o periodo imediatamente anterior de mesma duracao.</p>
+        <div class="stats" id="stats"></div>
+      </section>
+
+      <!-- area + need attention -->
+      <div class="grid grid-main">
+        <section class="card">
+          <div class="card-head">
+            <span class="glyph">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3.5-4 3 2.5L20 6"/></svg>
+            </span>
+            <h2>Horas em coluna por dia</h2>
+            <button class="icon-btn round" title="Detalhar">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>
+            </button>
+          </div>
+          <div class="hero-value" id="hero"></div>
+          <div class="legend" id="area-legend" style="margin:14px 0 6px"></div>
+          <div class="chart" id="area"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <span class="glyph">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 21 19H3z"/><path d="M12 10v4M12 16.5v.5"/></svg>
+            </span>
+            <h2>Precisa de atencao</h2>
+            <button class="icon-btn round" title="Mais">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+            </button>
+          </div>
+          <div class="attention" id="attention"></div>
+          <div style="margin-top:16px">
+            <div class="card-sub" style="margin-bottom:10px">Distribuicao do tempo</div>
+            <div class="chart" id="donut"></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- contribuidores + treemap -->
+      <div class="grid grid-main">
+        <section class="card">
+          <div class="card-head">
+            <span class="glyph">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16 5.2a3.2 3.2 0 0 1 0 6M18 20c0-2.4-.9-4.2-2.4-5.2"/></svg>
+            </span>
+            <h2>Tempo por contribuidor</h2>
+            <button class="icon-btn round" title="Detalhar">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>
+            </button>
+          </div>
+          <div class="legend" id="contrib-legend" style="margin-bottom:14px"></div>
+          <div class="rows" id="contrib"></div>
+        </section>
+
+        <section class="card dark">
+          <div class="card-head">
+            <span class="glyph">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 10h18M13 10v11"/></svg>
+            </span>
+            <h2>Peso de cada coluna</h2>
+            <button class="icon-btn round" title="Detalhar">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>
+            </button>
+          </div>
+          <div class="treemap" id="treemap"></div>
+        </section>
+      </div>
+
+      <!-- sprints -->
+      <section class="card">
+        <div class="card-head">
+          <span class="glyph">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 3.5L16 11H5"/></svg>
+          </span>
+          <h2>Comparativo de sprints</h2>
+          <button class="icon-btn round" title="Detalhar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>
+          </button>
+        </div>
+        <p class="card-sub">Cada sprint e medida pela sua duracao inteira — o filtro de periodo nao se aplica aqui. Clique numa linha para filtrar o dash inteiro por ela.</p>
+        <div class="legend" id="sprint-legend" style="margin-bottom:14px"></div>
+        <div class="sprints" id="sprints"></div>
+      </section>
+
+      <!-- gargalo -->
+      <section class="card">
+        <div class="card-head">
+          <span class="glyph">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16l-6 7v7l-4 2v-9z"/></svg>
+          </span>
+          <h2>Gargalo por coluna</h2>
+          <button class="icon-btn round" title="Detalhar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>
+          </button>
+        </div>
+        <p class="card-sub">Media de permanencia por passagem. A marca escura e a mediana; o numero acima e a media.</p>
+        <p class="card-sub" id="excluded-note"></p>
+        <div class="chart" id="bars"></div>
+        <div class="table-wrap" style="margin-top:12px"><table id="cols-table"></table></div>
+      </section>
+
+      <!-- issues -->
+      <section class="card">
+        <div class="card-head">
+          <span class="glyph">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+          </span>
+          <h2>Issues mais demoradas</h2>
+          <button class="icon-btn round" title="Detalhar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>
+          </button>
+        </div>
+        <p class="card-sub" id="issues-sub"></p>
+        <div class="table-wrap"><table id="issues-table"></table></div>
+      </section>
+      </div><!-- /view-overview -->
+
 </main>
 </div>
 </div>
