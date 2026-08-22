@@ -234,3 +234,108 @@ function sparkline(values, color, w = 74, h = 30) {
 
 /* ── area empilhada com crosshair ─────────────────────────────────────── */
 
+function renderArea(series, labels, hostId = "area") {
+  const host = $(hostId);
+  const W = host.clientWidth || 720;
+  const H = 260, padL = 44, padR = 8, padT = 12, padB = 26;
+  host.innerHTML = "";
+
+  if (series.length < 2) {
+    host.innerHTML = `<div class="empty">Sem historico suficiente para a serie diaria.</div>`;
+    return;
+  }
+
+  const iw = W - padL - padR, ih = H - padT - padB;
+  const totals = series.map(sumDay);
+  const max = Math.max(1, ...totals);
+  const nice = Math.ceil(max / 4) * 4;
+  const x = (i) => padL + (i / (series.length - 1)) * iw;
+  const y = (v) => padT + ih - (v / nice) * ih;
+
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img" });
+  svg.setAttribute("aria-label", "Horas em coluna por dia");
+
+  // grade + eixo y
+  const axis = svgEl("g", { class: "axis" });
+  for (let i = 0; i <= 4; i++) {
+    const v = (nice / 4) * i;
+    axis.appendChild(svgEl("line", {
+      class: "grid-line", x1: padL, x2: W - padR, y1: y(v), y2: y(v),
+    }));
+    const t = svgEl("text", { x: padL - 8, y: y(v) + 4, "text-anchor": "end" });
+    t.textContent = `${Math.round(v)}h`;
+    axis.appendChild(t);
+  }
+  svg.appendChild(axis);
+
+  // areas empilhadas, da base para o topo
+  const running = new Array(series.length).fill(0);
+  for (const label of labels) {
+    const lower = running.slice();
+    const upper = series.map((d, i) => running[i] + (d.values[label] || 0));
+    if (upper.every((v, i) => v === lower[i])) continue;
+    const top = upper.map((v, i) => [x(i), y(v)]);
+    const bottom = lower.map((v, i) => [x(i), y(v)]).reverse();
+    const color = colorOf(label);
+    svg.appendChild(svgEl("path", {
+      d: `${smoothPath(top)} L${bottom.map((p) => p.join(",")).join(" L")} Z`,
+      fill: color, "fill-opacity": .16,
+    }));
+    svg.appendChild(svgEl("path", {
+      d: smoothPath(top), fill: "none", stroke: color, "stroke-width": 2,
+      "stroke-linecap": "round", "stroke-linejoin": "round",
+    }));
+    upper.forEach((v, i) => (running[i] = v));
+  }
+
+  // eixo x (~6 marcas, sem deixar a ultima colidir com a penultima)
+  const step = Math.max(1, Math.ceil(series.length / 6));
+  const xa = svgEl("g", { class: "axis" });
+  const ticks = [];
+  for (let i = 0; i < series.length; i += step) ticks.push(i);
+  const last = series.length - 1;
+  if (last - ticks[ticks.length - 1] > step / 2) ticks.push(last);
+  else ticks[ticks.length - 1] = last;
+  for (const i of ticks) {
+    const t = svgEl("text", { x: x(i), y: H - 6, "text-anchor": "middle" });
+    t.textContent = fmtDay(series[i].date);
+    xa.appendChild(t);
+  }
+  svg.appendChild(xa);
+
+  // camada de hover
+  const cross = svgEl("line", { class: "crosshair", y1: padT, y2: padT + ih, opacity: 0 });
+  const dot = svgEl("circle", { r: 4.5, fill: cssVar("--surface"), "stroke-width": 2, opacity: 0 });
+  svg.appendChild(cross); svg.appendChild(dot);
+
+  const hit = svgEl("rect", {
+    x: padL, y: padT, width: iw, height: ih, fill: "transparent", style: "cursor:crosshair",
+  });
+  hit.addEventListener("mousemove", (ev) => {
+    const box = svg.getBoundingClientRect();
+    const px = ((ev.clientX - box.left) / box.width) * W;
+    const i = Math.round(((px - padL) / iw) * (series.length - 1));
+    const d = series[Math.min(Math.max(i, 0), series.length - 1)];
+    if (!d) return;
+    cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i));
+    cross.setAttribute("opacity", 1);
+    dot.setAttribute("cx", x(i)); dot.setAttribute("cy", y(sumDay(d)));
+    dot.setAttribute("stroke", cssVar("--brand"));
+    dot.setAttribute("opacity", 1);
+    const rows = labels
+      .filter((l) => d.values[l])
+      .sort((a, b) => d.values[b] - d.values[a])
+      .map((l) => ({ color: colorOf(l), label: l, value: fmtH(d.values[l]) }));
+    rows.push({ color: "", label: "Total", value: fmtH(sumDay(d)) });
+    tip.show(tipRows(fmtDay(d.date), rows), ev.clientX, box.top + y(sumDay(d)));
+  });
+  hit.addEventListener("mouseleave", () => {
+    cross.setAttribute("opacity", 0); dot.setAttribute("opacity", 0); tip.hide();
+  });
+  svg.appendChild(hit);
+
+  host.appendChild(svg);
+}
+
+/* ── rosca ────────────────────────────────────────────────────────────── */
+
