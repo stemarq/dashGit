@@ -636,3 +636,42 @@ function renderLegend(el, labels) {
   ).join("");
 }
 
+function renderContributors(data) {
+  const host = $("contrib");
+  const cols = data.columns;
+  if (!data.contributors.length) {
+    host.innerHTML = `<div class="empty">Nenhum contribuidor com tempo registrado no periodo.</div>`;
+    return;
+  }
+  const max = Math.max(...data.contributors.map((c) => c.total_hours)) || 1;
+
+  host.innerHTML = data.contributors.map((c) => {
+    const width = Math.max((c.total_hours / max) * 100, 4);
+    const segs = cols.map((col) => {
+      const b = c.by_label[col];
+      if (!b || !b.hours) return "";
+      const pct = (b.hours / c.total_hours) * 100;
+      return `<i style="flex:${pct};background:${colorOf(col)}"
+                 data-label="${esc(col)}" data-value="${esc(b.human)}"
+                 data-issues="${b.issues}"></i>`;
+    }).join("");
+    return `<div class="row-item">
+      <div class="row-name">
+        <span class="avatar">${esc(initials(c.contributor))}</span>
+        <span title="${esc(c.contributor)}">${esc(c.contributor)}</span>
+      </div>
+      <div class="stack" style="width:${width}%" data-name="${esc(c.contributor)}">${segs}</div>
+      <div class="row-total">${esc(c.total_human)}</div>
+    </div>`;
+  }).join("");
+
+  host.querySelectorAll(".stack i").forEach((seg) => {
+    seg.addEventListener("mousemove", (ev) => tip.show(tipRows(
+      seg.parentElement.dataset.name,
+      [{ color: seg.style.background, label: seg.dataset.label, value: seg.dataset.value },
+       { label: "Issues", value: seg.dataset.issues }],
+    ), ev.clientX, ev.clientY));
+    seg.addEventListener("mouseleave", tip.hide);
+  });
+}
+
