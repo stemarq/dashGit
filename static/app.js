@@ -781,3 +781,60 @@ function renderColumnsTable(columns) {
       : `<tr><td colspan="6" class="muted">Sem dados.</td></tr>`) + `</tbody>`;
 }
 
+function renderIssuesTable(data, query) {
+  const focus = data.focus_label;
+  const rows = data.issues
+    .filter((i) => !query || (i.title + i.assignee).toLowerCase().includes(query))
+    .slice(0, 20);
+  const max = Math.max(1, ...rows.map((i) => i.focus_hours));
+
+  $("issues-table").innerHTML =
+    `<thead><tr><th>#</th><th>Issue</th><th>Responsavel</th><th>Coluna atual</th>
+      <th class="num">${esc(focus ? `Tempo em ${focus}` : "Tempo trabalhado")}</th>
+      <th class="num">Lead time</th><th class="col-extra">Onde o tempo foi</th></tr></thead>
+     <tbody>` + (rows.length ? rows.map((i) => {
+        const top = Object.entries(i.time_by_column)
+          .filter(([label]) => label !== focus).slice(0, 2);
+        const bar = (i.focus_hours / max) * 100;
+        return `<tr class="row-link" data-iid="${i.iid}" tabindex="0"
+                    title="Ver quem trabalhou neste card">
+        <td class="muted">${i.iid}</td>
+        <td class="title-cell">
+          <a href="${esc(i.web_url)}" target="_blank" rel="noreferrer">${esc(i.title)}</a>
+          ${(i.tags || []).length ? `<div class="tags">${i.tags.slice(0, 4).map((tag) =>
+              `<span class="tag-plain">${esc(tag)}</span>`).join("")}</div>` : ""}
+        </td>
+        <td><span class="row-name"><span class="avatar" style="width:22px;height:22px;font-size:9px">${esc(initials(i.assignee))}</span>
+            <span>${esc(i.assignee)}</span></span></td>
+        <td>${i.current_column
+              ? `<span class="tag-pill"><i class="swatch round" style="background:${colorOf(i.current_column)}"></i>${esc(i.current_column)}</span>`
+              : `<span class="muted">fechada</span>`}</td>
+        <td class="num">
+          <b>${esc(fmtH(i.focus_hours))}</b>
+          <div class="mini-bar"><i style="width:${bar}%;background:${colorOf(focus)}"></i></div>
+        </td>
+        <td class="num muted">${esc(fmtH(i.lead_time_hours))}</td>
+        <td class="muted col-extra">${top.map(([l, v]) =>
+              `<span class="tag-pill" style="margin-right:4px"><i class="swatch round" style="background:${colorOf(l)}"></i>${esc(l)} ${esc(v.human)}</span>`).join("")}</td>
+      </tr>`; }).join("")
+      : `<tr><td colspan="7" class="muted">Nenhuma issue corresponde ao filtro.</td></tr>`) + `</tbody>`;
+
+  $("issues-table").querySelectorAll("tr[data-iid]").forEach((tr) => {
+    tr.addEventListener("click", (ev) => {
+      if (ev.target.closest("a")) return;   // o titulo continua levando ao GitLab
+      openIssue(Number(tr.dataset.iid));
+    });
+    tr.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") {
+        ev.preventDefault();
+        openIssue(Number(tr.dataset.iid));
+      }
+    });
+  });
+}
+
+/* ── drill-down de uma issue ──────────────────────────────────────────── */
+
+const fmtWhen = (iso) => new Date(iso).toLocaleString("pt-BR",
+  { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+
