@@ -298,3 +298,37 @@ h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.03em; margin: 0; }
 .grid-main { grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); }
 .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
+/* ── stat trio (Program task) ───────────────────────────────────────── */
+
+/* 3 indicadores na visao geral, 4 no perfil quando ha coluna de fila */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); }
+.stat { padding: 0 20px; border-left: 1px solid var(--line); }
+.stat:first-child { padding-left: 0; border-left: 0; }
+.stat-label { color: var(--ink-2); font-size: 12.5px; margin-bottom: 6px; }
+.stat-row { display: flex; align-items: center; gap: 12px; }
+.stat-value { font-size: 30px; font-weight: 600; letter-spacing: -0.035em; line-height: 1.1; }
+.stat-spark { margin-left: auto; }
+.delta {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-top: 10px; font-size: 12.5px; color: var(--ink-2);
+}
+.delta .chip {
+  display: inline-flex; align-items: center; gap: 3px; font-weight: 500;
+}
+.delta.up .chip { color: var(--pos); }
+.delta.down .chip { color: var(--neg); }
+
+/* hero (Analytics performance) */
+.hero-value {
+  font-size: 38px; font-weight: 600; letter-spacing: -0.04em;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-value .unit { color: var(--ink-3); font-size: 22px; }
+.badge {
+  font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px;
+  background: var(--brand); color: #fff; letter-spacing: 0;
+}
+.badge.soft { background: var(--brand-soft); color: var(--brand); }
+.badge.pos { background: var(--pos-soft); color: var(--pos); }
+.badge.neg { background: var(--neg-soft); color: var(--neg); }
+
