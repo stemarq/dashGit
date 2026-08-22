@@ -1058,3 +1058,74 @@ async function loadMilestones(project) {
   }
 }
 
+async function refresh() {
+  const p = params();
+  const scoped = new URLSearchParams(p.get("project") ? { project: p.get("project") } : {});
+  const sprintParams = new URLSearchParams(scoped);
+  if (p.get("labels")) sprintParams.set("labels", p.get("labels"));
+
+  const [contribData, columnData, issueData, boardData, sprintData] = await Promise.all([
+    api("/metrics/contributors", p),
+    api("/metrics/columns", p),
+    api("/metrics/issues", p),
+    api("/boards", scoped).catch(() => null),
+    api("/metrics/milestones", sprintParams).catch(() => ({ columns: [], milestones: [] })),
+  ]);
+
+  // ordem canonica: board primeiro, depois qualquer label so vista nas metricas.
+  // As colunas excluidas nao entram — nao gastam slot de cor nem aparecem
+  // em legenda, contador ou grafico nenhum.
+  const boardOrder = (boardData?.boards?.[0]?.columns || [])
+    .filter((c) => !c.excluded).map((c) => c.label);
+  const order = [...boardOrder];
+  for (const l of [...contribData.columns, ...columnData.columns.map((c) => c.label),
+                   ...sprintData.columns]) {
+    if (!order.includes(l)) order.push(l);
+  }
+  assignColors(order);
+
+  state.contributors = contribData;
+  state.columns = columnData;
+  state.issues = issueData;
+  state.sprints = sprintData;
+  $("nav-columns").textContent = order.length || "—";
+
+  const labels = contribData.columns;
+  const days = $("days").value ? Number($("days").value) : null;
+  const series = dailySeries(issueData.issues, labels.length ? labels : null, days);
+
+  renderStats(series, contribData, columnData, issueData.issues,
+              sprintData, $("milestone").value);
+  state.focus = issueData.focus_label;
+  state.review = contribData.review_label;
+  renderExclusions(boardData, issueData.focus_label);
+  const columnsTotal = Object.entries(contribData.totals)
+    .sort((a, b) => b[1].hours - a[1].hours)[0]?.[0];
+  renderHero(contribData.totals,
+             focusDelta(series, sprintData, $("milestone").value, columnsTotal).delta);
+  renderLegend($("area-legend"), labels);
+  renderLegend($("contrib-legend"), labels);
+  renderArea(series, labels);
+  renderDonut(contribData.totals);
+  renderContributors(contribData);
+  renderTreemap(contribData.totals, columnData.columns);
+  renderSprints(sprintData, $("milestone").value);
+  renderScope($("milestone").value);
+  renderAttention(issueData.issues, columnData);
+  renderBars(columnData.columns);
+  renderColumnsTable(columnData.columns);
+  renderIssuesTable(issueData, $("q").value.trim().toLowerCase());
+
+  state.lastSeries = series;
+  state.lastLabels = labels;
+
+  if (state.view === "contributors") {
+    renderPeople();
+    if (state.person) openProfile(state.person);
+  }
+  if (state.view === "commits") loadCommits();
+  // o relatorio depende do filtro de sprint: sem sprint e o comparativo,
+  // com sprint e o resumo dela
+  if (state.view === "report") loadReport();
+}
+
