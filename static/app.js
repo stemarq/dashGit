@@ -118,3 +118,47 @@ const colorOf = (label) => state.colors[label] || cssVar("--ink-3");
 
 /* ── serie diaria a partir das transicoes ─────────────────────────────── */
 
+function dailySeries(issues, labels, sinceDays) {
+  const until = Date.now();
+  const since = sinceDays ? until - sinceDays * DAY : null;
+  const byDay = new Map();                       // 'YYYY-MM-DD' -> {label: horas}
+  let floor = Infinity;
+
+  for (const issue of issues) {
+    for (const t of issue.transitions) {
+      if (labels && !labels.includes(t.label)) continue;
+      let start = new Date(t.start).getTime();
+      let end = t.end ? new Date(t.end).getTime() : until;
+      if (since) start = Math.max(start, since);
+      end = Math.min(end, until);
+      if (!(end > start)) continue;
+      floor = Math.min(floor, start);
+
+      // reparte o intervalo entre os dias que ele cobre
+      let cursor = start;
+      while (cursor < end) {
+        const dayStart = new Date(cursor); dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = dayStart.getTime() + DAY;
+        const slice = Math.min(end, dayEnd) - cursor;
+        const key = dayStart.toISOString().slice(0, 10);
+        const bucket = byDay.get(key) || {};
+        bucket[t.label] = (bucket[t.label] || 0) + slice / 3600000;
+        byDay.set(key, bucket);
+        cursor = dayEnd;
+      }
+    }
+  }
+  if (!byDay.size) return [];
+
+  // preenche os dias vazios para a linha nao "pular" buracos
+  const start = new Date(floor); start.setHours(0, 0, 0, 0);
+  const out = [];
+  for (let t = start.getTime(); t <= until; t += DAY) {
+    const key = new Date(t).toISOString().slice(0, 10);
+    out.push({ date: new Date(t), values: byDay.get(key) || {} });
+  }
+  return out;
+}
+
+const sumDay = (d) => Object.values(d.values).reduce((a, b) => a + b, 0);
+
