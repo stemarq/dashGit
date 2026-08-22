@@ -961,3 +961,21 @@ async function loadProjects() {
   return list;
 }
 
+/** O subtitulo depende da tela E do recorte; a barra de filtros e global,
+ *  entao renderScope roda em qualquer tela e nao pode assumir a visao geral. */
+const SUBTITLES = {
+  overview: {
+    plain: "Quanto tempo cada pessoa acumula em cada coluna do board.",
+    scoped: (m) => `Recorte da sprint ${m}. Clique de novo na sprint para voltar a ver tudo.`,
+  },
+  contributors: {
+    plain: "Tempo, carga e historico de cada pessoa. Os filtros do topo valem aqui tambem.",
+    scoped: (m) => `Tempo, carga e historico de cada pessoa dentro da sprint ${m}.`,
+  },
+};
+
+function renderSubtitle(milestone) {
+  const copy = SUBTITLES[state.view] || SUBTITLES.overview;
+  $("page-sub").textContent = milestone ? copy.scoped(milestone) : copy.plain;
+}
+
