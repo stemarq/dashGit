@@ -52,3 +52,16 @@ const fmtRange = (start, due) => {
 const initials = (name) => name.replace(/[^\p{L}\s]/gu, "").split(/\s+/).filter(Boolean)
   .slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
 
+function params() {
+  const p = new URLSearchParams();
+  if ($("project").value) p.set("project", $("project").value);
+  const labels = $("labels").value.trim();
+  if (labels) p.set("labels", labels);
+  const milestone = $("milestone").value;
+  if (milestone) p.set("milestone", milestone);
+  // uma sprint ja delimita um periodo: aplicar os dois recortes junto
+  // esconderia trabalho que aconteceu dentro da propria sprint
+  else if ($("days").value) p.set("days", $("days").value);
+  return p;
+}
+
