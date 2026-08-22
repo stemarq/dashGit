@@ -456,3 +456,30 @@ h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.03em; margin: 0; }
 #profile .card-head h2 { font-size: 18px; }
 #profile .card-head > div { min-width: 0; }
 
+/* ── heatmap dia x hora ─────────────────────────────────────────────── */
+
+.heat {
+  display: grid;
+  grid-template-columns: 30px repeat(24, minmax(0, 1fr));
+  gap: 2px; align-items: center;
+}
+.heat-corner { height: 14px; }
+.heat-hour { font-size: 9.5px; color: var(--ink-3); text-align: center; height: 14px; }
+.heat-day { font-size: 11px; color: var(--ink-2); padding-right: 6px; text-align: right; }
+.heat-cell {
+  display: block; aspect-ratio: 1; border-radius: 2px; min-height: 11px;
+}
+.heat-cell:hover { outline: 2px solid var(--ink); outline-offset: 1px; }
+.heat-legend {
+  display: flex; align-items: center; gap: 4px; justify-content: flex-end;
+  margin-top: 12px; font-size: 11px; color: var(--ink-3);
+}
+.heat-legend i { width: 12px; height: 12px; border-radius: 2px; display: block; }
+
+.pos { color: var(--pos); }
+.neg { color: var(--neg); }
+code {
+  font: 500 12px ui-monospace, monospace;
+  background: var(--surface-3); border-radius: 4px; padding: 1px 5px;
+}
+
