@@ -621,3 +621,18 @@ function renderStats(series, contribData, columnData, issues, sprintData, milest
   }).join("");
 }
 
+function renderHero(totals, delta) {
+  const total = Object.values(totals).reduce((a, v) => a + v.hours, 0);
+  $("hero").innerHTML =
+    `<span>${esc(fmtH(total))}</span>
+     <span class="unit">acumuladas</span>` +
+    (delta == null ? "" :
+      `<span class="badge ${delta >= 0 ? "" : "soft"}">${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%</span>`);
+}
+
+function renderLegend(el, labels) {
+  el.innerHTML = labels.map((l) =>
+    `<span class="legend-item"><i class="swatch" style="background:${colorOf(l)}"></i>${esc(l)}</span>`
+  ).join("");
+}
+
