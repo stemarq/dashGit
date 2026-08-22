@@ -598,3 +598,53 @@ td .row-name span:not(.avatar) {
 .head-actions .pill { margin: 0; }
 .head-actions select { max-width: 210px; }
 
+/* ── commits fora da convencao ──────────────────────────────────────── */
+
+/* a marca e a barra lateral, nao um fundo colorido: metade da tabela pode
+   estar fora do padrao, e fundo em metade das linhas vira ruido */
+.off-row td:first-child { box-shadow: inset 2px 0 0 var(--warn); }
+.off-dot {
+  color: var(--warn); display: inline-flex; vertical-align: -2px; margin-right: 5px;
+}
+.tag-plain.off { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+#c-recent .msg { display: block; }
+
+/* As tabelas do relatorio carregam duas alturas por celula (o valor e a
+   variacao). Com o padding padrao das tabelas do dash, a variacao de uma
+   linha encosta no valor da linha seguinte. */
+#view-report .table-wrap { padding-bottom: 6px; margin-bottom: -12px; }
+#view-report thead th { padding-bottom: 12px; }
+#view-report tbody td { padding-top: 15px; padding-bottom: 15px; }
+#view-report .card-sub { margin-bottom: 20px; }
+
+.r-delta { display: block; font-size: 11.5px; font-weight: 500; margin-top: 4px; }
+.r-delta.up { color: var(--pos); }
+.r-delta.down { color: var(--neg); }
+.r-delta.flat { color: var(--ink-3); font-weight: 400; }
+
+.r-block { padding: 20px 0; border-bottom: 1px solid var(--line); }
+.r-block:last-child { border-bottom: 0; padding-bottom: 0; }
+.r-block:first-child { padding-top: 0; }
+.r-block-head {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.r-block-head .muted { font-size: 12.5px; }
+/* a coluna da direita do .load-row foi dimensionada para um contador ("3");
+   aqui ela recebe duracao ("19h 45m"), que quebrava em tres linhas */
+.r-block .load-row { grid-template-columns: minmax(0, 1fr) 104px; }
+.r-block .load-row .row-total { white-space: nowrap; }
+.r-block .load-row + .load-row { margin-top: 8px; }
+
+.commit-msg {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px; background: var(--surface-3); color: var(--ink-2);
+  padding: 2px 6px; border-radius: 6px;
+  display: inline-block; max-width: 380px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;
+}
+#c-conv-sub code, #r-sub code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px; background: var(--surface-3); padding: 1px 5px; border-radius: 5px;
+}
+
