@@ -41,3 +41,14 @@ const fmtH = (h) => {
   return `${Math.floor(h / 24)}d ${Math.round(h % 24)}h`;
 };
 const fmtDay = (d) => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+const fmtRange = (start, due) => {
+  const one = (iso) => new Date(`${iso}T00:00:00`)
+    .toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+  if (start && due) return `${one(start)} — ${one(due)}`;
+  if (due) return `entrega ${one(due)}`;
+  if (start) return `inicio ${one(start)}`;
+  return "sem datas";
+};
+const initials = (name) => name.replace(/[^\p{L}\s]/gu, "").split(/\s+/).filter(Boolean)
+  .slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
+
