@@ -741,3 +741,29 @@ function renderSprints(data, selected) {
   });
 }
 
+function renderAttention(issues, columnData) {
+  const now = Date.now();
+  const stale = issues.filter((i) => i.current_column && i.transitions.some(
+    (t) => !t.end && now - new Date(t.start).getTime() > 7 * DAY)).length;
+  const unassigned = issues.filter((i) => i.assignee === "(sem responsavel)").length;
+  const wip = (columnData.columns || []).reduce((a, c) => a + c.wip, 0);
+
+  const rows = [
+    { icon: "alert", color: "var(--neg)", label: "Paradas ha mais de 7 dias", n: stale },
+    { icon: "clock", color: "var(--warn)", label: "Sem responsavel", n: unassigned },
+    { icon: "board", color: "var(--brand)", label: "Cards em coluna agora", n: wip },
+  ];
+  const glyphs = {
+    alert: `<path d="M12 3.5 21 19H3z"/><path d="M12 10v4M12 16.5v.5"/>`,
+    clock: `<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>`,
+    board: `<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16M15 4v16"/>`,
+  };
+  $("attention").innerHTML = rows.map((r) => `<div class="att-row">
+      <span class="glyph" style="color:${r.color}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${glyphs[r.icon]}</svg>
+      </span>
+      <span>${esc(r.label)}</span><span class="n">${r.n}</span>
+    </div>`).join("");
+}
+
