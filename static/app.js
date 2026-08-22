@@ -74,3 +74,13 @@ async function api(path, p, opts) {
 }
 
 let toastTimer;
+function toast(msg, ms = 3200) {
+  const el = $("toast");
+  el.textContent = msg;
+  el.classList.add("on");
+  clearTimeout(toastTimer);
+  if (ms) toastTimer = setTimeout(() => el.classList.remove("on"), ms);
+}
+
+/* ── tooltip compartilhado ────────────────────────────────────────────── */
+
