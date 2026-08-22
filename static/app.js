@@ -979,3 +979,46 @@ function renderSubtitle(milestone) {
   $("page-sub").textContent = milestone ? copy.scoped(milestone) : copy.plain;
 }
 
+/** Deixa explicito quais colunas ficaram de fora da conta e qual e a de
+ *  trabalho — um numero sem essa nota e facil de ler errado. */
+function renderExclusions(boardData, focus) {
+  const excluded = boardData?.excluded_labels || [];
+  const warn = boardData && boardData.columns_known === false
+    ? `<b>Nenhum board sincronizado.</b> Sem saber quais labels sao colunas,
+       toda label conta como etapa e o total pode passar do tempo de relogio.`
+    : "";
+  $("board-warning").innerHTML = warn;
+  $("board-warning").hidden = !warn;
+  const note = excluded.length
+    ? `<b>${esc(excluded.join(", "))}</b> ${excluded.length === 1 ? "fica" : "ficam"}
+       fora de toda conta de tempo (fila de planejamento, nao trabalho).`
+    : "";
+  $("excluded-note").innerHTML = note;
+  state.attribution = boardData?.attribution || "mover";
+  state.queues = boardData?.queue_labels || [];
+  state.scope = boardData?.scope || "assigned";
+  const regra = state.scope === "assigned"
+    ? `Conta o que a pessoa fez nas <b>issues atribuidas a ela</b>${
+        state.review ? `, mais o tempo dela em <b>${esc(state.review)}</b>` : ""}.
+       Outra etapa feita numa issue de outra pessoa fica de fora do tempo
+       individual, mas continua no peso das colunas e no gargalo.`
+    : state.attribution === "mover"
+      ? `O tempo de cada coluna vai para <b>quem moveu o card para la</b> — quem
+         executou leva o Doing, quem revisou leva o Review.`
+      : `O tempo de todas as colunas vai para o <b>responsavel atual da issue</b>.`;
+  const fila = state.queues.length
+    ? ` <b>${esc(state.queues.join(", "))}</b> e fila: o tempo parado la nao conta
+        como trabalho de ninguem, e sim como <b>espera causada</b> por quem
+        acabou pegando o card.`
+    : "";
+  $("attribution-note").innerHTML = regra + fila;
+  $("issues-sub").innerHTML = focus
+    ? `Ranqueadas pelo tempo em <b>${esc(focus)}</b>, nao pelo lead time —
+       uma issue esquecida na fila nao e uma issue demorada.
+       ${note ? "O " + esc(excluded.join(", ")) + " nao entra na soma." : ""}
+       Labels que nao sao coluna do board aparecem como etiqueta e nao viram tempo.
+       Clique numa linha para ver quem trabalhou no card e por quanto tempo.`
+    : `Ranqueadas pelo tempo somado nas colunas contadas.
+       Clique numa linha para ver quem trabalhou no card e por quanto tempo.`;
+}
+
