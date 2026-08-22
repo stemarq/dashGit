@@ -271,6 +271,65 @@
       </section>
       </div><!-- /view-overview -->
 
+      <div id="view-contributors" hidden>
+        <div class="grid grid-main">
+          <section class="card">
+            <div class="card-head">
+              <span class="glyph">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16 5.2a3.2 3.2 0 0 1 0 6M18 20c0-2.4-.9-4.2-2.4-5.2"/></svg>
+              </span>
+              <h2>Quem esta no fluxo</h2>
+            </div>
+            <p class="card-sub" id="people-sub"></p>
+            <p class="card-sub" id="attribution-note"></p>
+            <div class="people" id="people"></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <span class="glyph">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V9M10 20V4M16 20v-7M22 20H2"/></svg>
+              </span>
+              <h2>Carga por pessoa</h2>
+            </div>
+            <p class="card-sub" id="load-sub"></p>
+            <div class="rows" id="load"></div>
+          </section>
+        </div>
+
+        <section class="card" id="profile" hidden>
+          <div class="card-head">
+            <span class="avatar" id="p-avatar" style="width:36px;height:36px;font-size:13px">—</span>
+            <div>
+              <h2 id="p-name">—</h2>
+              <div class="card-sub" id="p-meta" style="margin:0"></div>
+            </div>
+            <button class="icon-btn round" id="p-close" title="Fechar perfil">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+          </div>
+
+          <div class="stats" id="p-stats" style="margin:16px 0 22px"></div>
+
+          <div class="grid grid-main">
+            <div>
+              <div class="card-sub">Horas em coluna por dia</div>
+              <div class="chart" id="p-area"></div>
+            </div>
+            <div>
+              <div class="card-sub" id="p-donut-sub">Distribuicao entre as colunas</div>
+              <div class="chart" id="p-donut"></div>
+            </div>
+          </div>
+
+          <div class="card-sub" style="margin-top:22px">Por sprint</div>
+          <div class="sprints" id="p-sprints"></div>
+
+          <div class="card-sub" style="margin-top:22px" id="p-issues-sub"></div>
+          <div class="table-wrap"><table id="p-issues"></table></div>
+        </section>
+      </div>
+
 </main>
 </div>
 </div>
