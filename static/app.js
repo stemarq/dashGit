@@ -1129,3 +1129,26 @@ async function refresh() {
   if (state.view === "report") loadReport();
 }
 
+async function safeRefresh() {
+  try {
+    await refresh();
+  } catch (e) {
+    toast(`Nao foi possivel carregar: ${e.message}`, 6000);
+  }
+}
+
+/* ── eventos ──────────────────────────────────────────────────────────── */
+
+$("reload").addEventListener("click", safeRefresh);
+$("project").addEventListener("change", async () => {
+  $("crumb-project").textContent = $("project").value;
+  await loadMilestones($("project").value);
+  safeRefresh();
+});
+$("milestone").addEventListener("change", safeRefresh);
+$("days").addEventListener("change", safeRefresh);
+$("labels").addEventListener("keydown", (e) => { if (e.key === "Enter") safeRefresh(); });
+$("q").addEventListener("input", () => {
+  if (state.issues) renderIssuesTable(state.issues, $("q").value.trim().toLowerCase());
+});
+
