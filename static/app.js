@@ -545,3 +545,18 @@ function renderBars(columns) {
 
 /* ── blocos de conteudo ───────────────────────────────────────────────── */
 
+/** Com uma sprint selecionada, "periodo anterior" nao quer dizer nada:
+ *  o comparativo util e contra a sprint anterior da lista. */
+function focusDelta(series, sprintData, milestone, focus) {
+  if (!milestone) return { delta: windowDelta(series), note: "vs. periodo anterior" };
+  const ordered = sprintData.milestones || [];
+  const at = ordered.findIndex((m) => m.milestone === milestone);
+  const prev = at >= 0 ? ordered[at + 1] : null;
+  const before = prev?.by_label?.[focus]?.hours;
+  const current = ordered[at]?.by_label?.[focus]?.hours ?? 0;
+  return {
+    delta: before ? ((current - before) / before) * 100 : null,
+    note: prev ? `vs. ${prev.milestone}` : "sem sprint anterior para comparar",
+  };
+}
+
