@@ -483,3 +483,14 @@ code {
   background: var(--surface-3); border-radius: 4px; padding: 1px 5px;
 }
 
+/* ── need attention ─────────────────────────────────────────────────── */
+
+.attention { display: grid; gap: 2px; }
+.att-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 8px; border-radius: var(--radius-sm);
+}
+.att-row:hover { background: var(--surface-2); }
+.att-row .n { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.att-row .glyph { display: grid; place-items: center; }
+
