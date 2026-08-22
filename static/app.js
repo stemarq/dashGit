@@ -65,3 +65,12 @@ function params() {
   return p;
 }
 
+async function api(path, p, opts) {
+  const qs = p && p.toString() ? "?" + p.toString() : "";
+  const res = await fetch("/api" + path + qs, opts);
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.detail || res.statusText);
+  return body;
+}
+
+let toastTimer;
