@@ -395,3 +395,42 @@ function renderDonut(totals, hostId = "donut") {
 
 /* ── treemap (squarify) ───────────────────────────────────────────────── */
 
+function squarify(items, x, y, w, h, out = []) {
+  if (!items.length) return out;
+  if (items.length === 1) {
+    out.push({ ...items[0], x, y, w, h });
+    return out;
+  }
+  const total = items.reduce((a, i) => a + i.value, 0);
+  const vertical = w >= h;
+  const side = vertical ? h : w;
+  let best = 1, split = 1, acc = 0;
+
+  for (let i = 1; i <= items.length; i++) {
+    acc += items[i - 1].value;
+    const frac = acc / total;
+    const len = (vertical ? w : h) * frac;
+    const worst = Math.max(...items.slice(0, i).map((it) => {
+      const other = (it.value / acc) * side;
+      return Math.max(len / other, other / len);
+    }));
+    if (i === 1 || worst < best) { best = worst; split = i; } else break;
+  }
+
+  const head = items.slice(0, split), tail = items.slice(split);
+  const frac = head.reduce((a, i) => a + i.value, 0) / total;
+  const len = (vertical ? w : h) * frac;
+  let offset = 0;
+  const headTotal = head.reduce((a, i) => a + i.value, 0);
+  for (const it of head) {
+    const seg = (it.value / headTotal) * side;
+    out.push(vertical
+      ? { ...it, x, y: y + offset, w: len, h: seg }
+      : { ...it, x: x + offset, y, w: seg, h: len });
+    offset += seg;
+  }
+  return vertical
+    ? squarify(tail, x + len, y, w - len, h, out)
+    : squarify(tail, x, y + len, w, h - len, out);
+}
+
