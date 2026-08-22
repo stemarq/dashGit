@@ -1022,3 +1022,21 @@ function renderExclusions(boardData, focus) {
        Clique numa linha para ver quem trabalhou no card e por quanto tempo.`;
 }
 
+function renderScope(milestone) {
+  const days = $("days");
+  days.disabled = !!milestone;
+  days.closest(".pill").classList.toggle("off", !!milestone);
+  days.closest(".pill").title = milestone
+    ? `A sprint ${milestone} ja define o periodo` : "";
+
+  $("crumb-sprint").innerHTML = milestone
+    ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="1.8" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>
+       <b>${esc(milestone)}</b>`
+    : "";
+  $("stats-sub").textContent = milestone
+    ? "Comparado com a sprint imediatamente anterior."
+    : "Comparado com o periodo imediatamente anterior de mesma duracao.";
+  renderSubtitle(milestone);
+}
+
