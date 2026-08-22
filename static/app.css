@@ -565,3 +565,29 @@ td .row-name span:not(.avatar) {
 .tile.on-light { color: #0f0f10; }
 .tile.on-light .t-delta { background: rgba(0, 0, 0, .1); }
 
+/* ── grafico ────────────────────────────────────────────────────────── */
+
+.chart { position: relative; width: 100%; }
+.chart svg { width: 100%; overflow: visible; }
+.axis text { font-size: 11px; fill: var(--ink-3); }
+.grid-line { stroke: var(--line); stroke-width: 1; }
+.crosshair { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 4 4; }
+
+.tooltip {
+  position: absolute; pointer-events: none; z-index: 40;
+  background: #17171b; color: #fff; border-radius: 11px;
+  padding: 10px 12px; font-size: 12px; min-width: 168px;
+  box-shadow: var(--shadow-lg); opacity: 0; transition: opacity .12s;
+}
+:root[data-theme="dark"] .tooltip { background: #2a2a31; }
+.tooltip.on { opacity: 1; }
+.tooltip .tt-title { color: #a1a1aa; margin-bottom: 7px; font-size: 11px; }
+.tooltip .tt-row {
+  display: flex; align-items: center; gap: 8px; padding: 2px 0;
+}
+.tooltip .tt-row b { margin-left: auto; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+.empty {
+  padding: 34px 10px; text-align: center; color: var(--ink-3); font-size: 13px;
+}
+
