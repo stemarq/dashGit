@@ -560,3 +560,64 @@ function focusDelta(series, sprintData, milestone, focus) {
   };
 }
 
+function renderStats(series, contribData, columnData, issues, sprintData, milestone) {
+  const focus = state.order.find((l) => /doing|andamento|progress|desenvolv/i.test(l))
+    || state.order[1] || state.order[0];
+
+  const focusSeries = series.map((d) => d.values[focus] || 0);
+  const wip = (columnData.columns || []).reduce((a, c) => a + c.wip, 0);
+  const openIssues = issues.filter((i) => i.state === "opened");
+  const leadAvg = issues.length
+    ? issues.reduce((a, i) => a + i.lead_time_hours, 0) / issues.length : 0;
+
+  const focusTotal = contribData.totals[focus]?.human || "0h";
+  const { delta, note } = focusDelta(series, sprintData, milestone, focus);
+
+  const cards = [
+    {
+      label: `Tempo acumulado em ${focus || "—"}`,
+      value: focusTotal,
+      spark: focusSeries,
+      color: colorOf(focus),
+      delta,
+      note,
+    },
+    {
+      label: "Lead time medio",
+      value: fmtH(leadAvg),
+      spark: series.map(sumDay),
+      color: cssVar("--s3"),
+      delta: null,
+      note: `${issues.length} issues com historico`,
+    },
+    {
+      label: "Cards em andamento agora",
+      value: String(wip),
+      spark: series.slice(-14).map(sumDay),
+      color: cssVar("--s1"),
+      delta: null,
+      note: `${openIssues.length} issues abertas`,
+    },
+  ];
+
+  $("stats").innerHTML = cards.map((c) => {
+    const dir = c.delta == null ? "" : c.delta >= 0 ? "up" : "down";
+    const arrow = c.delta == null ? "" :
+      `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="${c.delta >= 0 ? "M12 19V5M6 11l6-6 6 6" : "M12 5v14M6 13l6 6 6-6"}"/></svg>`;
+    return `<div class="stat">
+      <div class="stat-label">${esc(c.label)}</div>
+      <div class="stat-row">
+        <div class="stat-value">${esc(c.value)}</div>
+        <div class="stat-spark">${sparkline(c.spark, c.color)}</div>
+      </div>
+      <div class="delta ${dir}">
+        ${c.delta == null ? "" :
+          `<span class="chip">${arrow}${Math.abs(c.delta).toFixed(1)}%</span>`}
+        <span>${esc(c.note)}</span>
+      </div>
+    </div>`;
+  }).join("");
+}
+
