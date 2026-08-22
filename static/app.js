@@ -1152,3 +1152,21 @@ $("q").addEventListener("input", () => {
   if (state.issues) renderIssuesTable(state.issues, $("q").value.trim().toLowerCase());
 });
 
+$("sync").addEventListener("click", async () => {
+  toast("Sincronizando com o GitLab… o primeiro sync de um projeto grande demora.", 0);
+  try {
+    const p = new URLSearchParams();
+    if ($("project").value) p.set("project", $("project").value);
+    const r = await api("/sync", p, { method: "POST" });
+    toast(r.synced.map((s) =>
+      `${s.project}: ${s.issues_synced} issues · ${s.milestones ?? 0} sprints`
+      + ` · ${s.commits ?? 0} commits`).join(" · "));
+    await loadProjects();
+    await loadMilestones($("project").value);
+    await safeRefresh();
+    if (state.view === "commits") await loadCommits();
+  } catch (e) {
+    toast(`Falha no sync: ${e.message}`, 6000);
+  }
+});
+
