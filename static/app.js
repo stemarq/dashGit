@@ -1040,3 +1040,21 @@ function renderScope(milestone) {
   renderSubtitle(milestone);
 }
 
+async function loadMilestones(project) {
+  const select = $("milestone");
+  const keep = select.value;
+  try {
+    const data = await api("/milestones",
+      new URLSearchParams(project ? { project } : {}));
+    select.innerHTML = `<option value="">Todas as sprints</option>` +
+      data.milestones.map((m) =>
+        `<option value="${esc(m.title)}">${esc(m.title)} (${m.issues})</option>`).join("");
+    // mantem a selecao se a sprint continua existindo apos trocar de projeto
+    select.value = data.milestones.some((m) => m.title === keep) ? keep : "";
+    state.milestones = data.milestones;
+  } catch {
+    select.innerHTML = `<option value="">Todas as sprints</option>`;
+    state.milestones = [];
+  }
+}
+
