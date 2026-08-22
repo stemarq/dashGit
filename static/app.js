@@ -339,3 +339,59 @@ function renderArea(series, labels, hostId = "area") {
 
 /* ── rosca ────────────────────────────────────────────────────────────── */
 
+function renderDonut(totals, hostId = "donut") {
+  const host = $(hostId);
+  const entries = Object.entries(totals).sort((a, b) => b[1].hours - a[1].hours);
+  const sum = entries.reduce((a, [, v]) => a + v.hours, 0);
+  host.innerHTML = "";
+  if (!sum) { host.innerHTML = `<div class="empty">Sem dados no periodo.</div>`; return; }
+
+  const S = 176, r = 66, cx = S / 2, cy = S / 2, gap = 0.035;
+  const svg = svgEl("svg", { viewBox: `0 0 ${S} ${S}`, height: S, style: "margin:0 auto" });
+  svg.setAttribute("aria-label", "Distribuicao do tempo por coluna");
+
+  let angle = -Math.PI / 2;
+  for (const [label, v] of entries) {
+    const frac = v.hours / sum;
+    const sweep = frac * Math.PI * 2;
+    if (sweep <= gap) { angle += sweep; continue; }
+    const a0 = angle + gap / 2, a1 = angle + sweep - gap / 2;
+    const arc = svgEl("path", {
+      d: `M${cx + r * Math.cos(a0)},${cy + r * Math.sin(a0)}` +
+         ` A${r},${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1` +
+         ` ${cx + r * Math.cos(a1)},${cy + r * Math.sin(a1)}`,
+      fill: "none", stroke: colorOf(label), "stroke-width": 15, "stroke-linecap": "round",
+    });
+    arc.style.cursor = "default";
+    arc.addEventListener("mousemove", (ev) => tip.show(
+      tipRows(label, [{ color: colorOf(label), label: "Tempo", value: v.human },
+                      { label: "Participacao", value: `${(frac * 100).toFixed(1)}%` }]),
+      ev.clientX, ev.clientY));
+    arc.addEventListener("mouseleave", tip.hide);
+    svg.appendChild(arc);
+    angle += sweep;
+  }
+
+  const top = entries[0];
+  const pct = svgEl("text", {
+    x: cx, y: cy + 2, "text-anchor": "middle",
+    style: `font-size:26px;font-weight:600;letter-spacing:-.03em;fill:${cssVar("--ink")}`,
+  });
+  pct.textContent = `${Math.round((top[1].hours / sum) * 100)}%`;
+  const cap = svgEl("text", {
+    x: cx, y: cy + 20, "text-anchor": "middle",
+    style: `font-size:11px;fill:${cssVar("--ink-3")}`,
+  });
+  cap.textContent = top[0];
+  svg.appendChild(pct); svg.appendChild(cap);
+  host.appendChild(svg);
+
+  host.insertAdjacentHTML("beforeend",
+    `<div class="legend" style="margin-top:12px;justify-content:center">` +
+    entries.map(([l, v]) => `<span class="legend-item">
+        <i class="swatch" style="background:${colorOf(l)}"></i>${esc(l)} · ${esc(v.human)}
+      </span>`).join("") + `</div>`);
+}
+
+/* ── treemap (squarify) ───────────────────────────────────────────────── */
+
