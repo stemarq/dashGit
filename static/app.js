@@ -852,3 +852,97 @@ function closeIssue() {
   document.body.style.overflow = "";
 }
 
+function renderIssueDetail(i, focus) {
+  $("i-title").textContent = `#${i.iid} ${i.title}`;
+  $("i-meta").innerHTML =
+    `<a href="${esc(i.web_url)}" target="_blank" rel="noreferrer">abrir no GitLab</a>`
+    + ` · ${esc(i.milestone)} · responsavel ${esc(i.assignee)}`
+    + ` · ${i.state === "closed" ? "fechada" : "aberta"}`;
+
+  const people = i.participants || [];
+  const top = people.find((p) => p.hours > 0);
+  // o tempo do card inclui a fila, que nao e trabalho de ninguem
+  const worked = people.reduce((a, p) => a + p.hours, 0);
+  const queued = i.working_hours - worked;
+  $("i-stats").innerHTML = [
+    {
+      label: focus ? `Tempo em ${focus}` : "Tempo trabalhado",
+      value: fmtH(focus ? i.time_by_column[focus]?.hours || 0 : i.working_hours),
+      note: i.current_column ? `agora em ${i.current_column}` : "card fechado",
+    },
+    { label: "Trabalho de gente", value: fmtH(worked),
+      note: queued > 0.05
+        ? `${people.length} ${people.length === 1 ? "pessoa" : "pessoas"} · ${fmtH(queued)} parado em fila`
+        : `${people.length} ${people.length === 1 ? "pessoa" : "pessoas"} no card` },
+    { label: "Lead time", value: fmtH(i.lead_time_hours), note: "da criacao ao fechamento" },
+    ...(top ? [{ label: "Quem mais segurou", value: top.person,
+                 note: `${top.human} · ${top.share}% do tempo do card`, name: true }] : []),
+  ].map((c) => `<div class="stat">
+      <div class="stat-label">${esc(c.label)}</div>
+      <div class="stat-row"><div class="stat-value${c.name ? " stat-name" : ""}">${esc(c.value)}</div></div>
+      <div class="delta"><span>${esc(c.note)}</span></div>
+    </div>`).join("");
+
+  $("i-people-sub").innerHTML = people.length
+    ? `Tempo de cada pessoa neste card, pela coluna que ela mesma tocou`
+      + (state.attribution === "mover"
+          ? " — quem moveu o card para a coluna leva aquela etapa."
+          : " — tudo atribuido ao responsavel atual.")
+      + (state.scope === "assigned"
+          ? " Etapas feitas por gente de fora aparecem aqui mesmo sem entrar no total individual delas."
+          : "")
+    : "";
+
+  $("i-people").innerHTML = people.length
+    ? people.map((p) => {
+        const cols = Object.entries(p.by_column);
+        const segs = cols.map(([label, v]) =>
+          `<i style="flex:${Math.max(v.hours, 0.01)};background:${colorOf(label)}"
+              title="${esc(label)}: ${esc(v.human)}"></i>`).join("");
+        return `<div class="i-person">
+          <div class="row-name">
+            <span class="avatar">${esc(initials(p.person))}</span>
+            <span title="${esc(p.person)}">${esc(p.person)}</span>
+          </div>
+          <div>
+            ${segs ? `<div class="stack">${segs}</div>` : ""}
+            <div class="i-cols">${cols.map(([label, v]) =>
+              `<span class="tag-pill"><i class="swatch round" style="background:${colorOf(label)}"></i>${esc(label)} <b>${esc(v.human)}</b>${
+                v.stints > 1 ? `<span class="muted"> · ${v.stints}x</span>` : ""}${
+                v.still_in_column ? `<span class="muted"> · ainda la</span>` : ""}</span>`).join("")
+              || `<span class="muted">so espera na fila</span>`}
+              ${p.waiting_hours ? `<span class="tag-pill debt-pill">esperando por ela ${esc(fmtH(p.waiting_hours))}</span>` : ""}
+            </div>
+          </div>
+          <div class="row-total">${esc(p.human)}
+            <div class="sprint-when" style="text-align:right">${p.share}% do card</div>
+          </div>
+        </div>`;
+      }).join("")
+    : `<div class="empty">Ninguem registrado: o card nao passou por coluna nenhuma.</div>`;
+
+  $("i-timeline").innerHTML = i.transitions.length
+    ? i.transitions.map((t) => `<div class="i-step${t.queue ? " queue" : ""}">
+        <span class="i-dot" style="background:${colorOf(t.label)}"></span>
+        <div class="i-step-main">
+          <b>${esc(t.label)}</b>
+          <span class="muted">${t.queue ? "fila — ninguem trabalhando"
+            : `por ${esc(t.owner || t.moved_by || "desconhecido")}`}${
+            t.moved_by && t.moved_by !== t.owner ? ` · moveu ${esc(t.moved_by)}` : ""}</span>
+        </div>
+        <div class="i-step-when muted">${esc(fmtWhen(t.start))} → ${
+          t.end ? esc(fmtWhen(t.end)) : "agora"}</div>
+        <div class="row-total">${esc(fmtH(t.hours))}</div>
+      </div>`).join("")
+    : `<div class="empty">Sem eventos de coluna nesta issue.</div>`;
+}
+
+$("issue-modal").addEventListener("click", (ev) => {
+  if (ev.target.closest("[data-close]")) closeIssue();
+});
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape" && !$("issue-modal").hidden) closeIssue();
+});
+
+/* ── orquestracao ─────────────────────────────────────────────────────── */
+
