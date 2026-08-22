@@ -106,3 +106,15 @@ const tipRows = (title, rows) =>
 
 /* ── cores por coluna ─────────────────────────────────────────────────── */
 
+function assignColors(order) {
+  state.order = order;
+  state.colors = {};
+  order.forEach((label, i) => {
+    // >6 colunas: as excedentes caem em "Outras" no lugar de gerar matiz nova
+    state.colors[label] = i < SERIES.length ? cssVar(SERIES[i]) : cssVar("--ink-3");
+  });
+}
+const colorOf = (label) => state.colors[label] || cssVar("--ink-3");
+
+/* ── serie diaria a partir das transicoes ─────────────────────────────── */
+
