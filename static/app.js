@@ -946,3 +946,18 @@ document.addEventListener("keydown", (ev) => {
 
 /* ── orquestracao ─────────────────────────────────────────────────────── */
 
+async function loadProjects() {
+  const list = await api("/projects");
+  $("project").innerHTML = list.length
+    ? list.map((p) => `<option value="${esc(p.path)}">${esc(p.path)}</option>`).join("")
+    : `<option value="">nenhum projeto sincronizado</option>`;
+  if (list.length) {
+    $("crumb-project").textContent = list[0].path;
+    const when = list[0].synced_at ? new Date(list[0].synced_at) : null;
+    $("synced-at").textContent = when
+      ? `sincronizado ${when.toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}`
+      : "";
+  }
+  return list;
+}
+
