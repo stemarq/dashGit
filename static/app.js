@@ -180,3 +180,41 @@ function svgEl(tag, attrs = {}) {
   return el;
 }
 
+/** Caminho suavizado por cubica monotona (Fritsch-Carlson).
+ *  Catmull-Rom e mais simples, mas ultrapassa os pontos quando a serie e
+ *  esparsa — numa area empilhada isso faz as camadas se cruzarem. A versao
+ *  monotona nunca passa do valor real. */
+function smoothPath(pts) {
+  const n = pts.length;
+  if (n < 2) return n ? `M${pts[0][0]},${pts[0][1]}` : "";
+
+  const dx = [], slope = [];
+  for (let i = 0; i < n - 1; i++) {
+    const h = pts[i + 1][0] - pts[i][0];
+    dx.push(h);
+    slope.push(h ? (pts[i + 1][1] - pts[i][1]) / h : 0);
+  }
+
+  const tan = new Array(n);
+  tan[0] = slope[0];
+  tan[n - 1] = slope[n - 2];
+  for (let i = 1; i < n - 1; i++) {
+    if (slope[i - 1] * slope[i] <= 0) {
+      tan[i] = 0;                       // extremo local: tangente plana
+    } else {
+      const t = (slope[i - 1] + slope[i]) / 2;
+      const limit = 3 * Math.min(Math.abs(slope[i - 1]), Math.abs(slope[i]));
+      tan[i] = Math.sign(t) * Math.min(Math.abs(t), limit);
+    }
+  }
+
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i = 0; i < n - 1; i++) {
+    const third = dx[i] / 3;
+    d += ` C${pts[i][0] + third},${pts[i][1] + tan[i] * third}` +
+         ` ${pts[i + 1][0] - third},${pts[i + 1][1] - tan[i + 1] * third}` +
+         ` ${pts[i + 1][0]},${pts[i + 1][1]}`;
+  }
+  return d;
+}
+
