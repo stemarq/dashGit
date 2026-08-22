@@ -591,3 +591,10 @@ td .row-name span:not(.avatar) {
   padding: 34px 10px; text-align: center; color: var(--ink-3); font-size: 13px;
 }
 
+/* ── relatorio ──────────────────────────────────────────────────────── */
+
+.head-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.head-actions .btn { margin-left: 0; }
+.head-actions .pill { margin: 0; }
+.head-actions select { max-width: 210px; }
+
