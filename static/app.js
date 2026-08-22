@@ -218,3 +218,19 @@ function smoothPath(pts) {
   return d;
 }
 
+function sparkline(values, color, w = 74, h = 30) {
+  if (values.length < 2) return "";
+  const max = Math.max(...values), min = Math.min(...values);
+  const span = max - min || 1;
+  const pts = values.map((v, i) => [
+    (i / (values.length - 1)) * w,
+    h - 3 - ((v - min) / span) * (h - 6),
+  ]);
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
+    <path d="${smoothPath(pts)}" fill="none" stroke="${color}" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+/* ── area empilhada com crosshair ─────────────────────────────────────── */
+
