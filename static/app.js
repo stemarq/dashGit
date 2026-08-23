@@ -1180,3 +1180,20 @@ $("theme-toggle").addEventListener("click", () => {
   }
 });
 
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "k") { e.preventDefault(); $("q").focus(); }
+});
+
+let resizeTimer;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (!state.lastSeries) return;
+    renderArea(state.lastSeries, state.lastLabels);
+    renderTreemap(state.contributors.totals, state.columns.columns);
+    renderBars(state.columns.columns);
+  }, 160);
+});
+
+/* ── boot ─────────────────────────────────────────────────────────────── */
+
