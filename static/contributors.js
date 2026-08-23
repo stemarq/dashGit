@@ -53,3 +53,69 @@ function wipOf(person, columns) {
   return columns.reduce((a, col) => a + (person.by_label[col]?.still_in_column || 0), 0);
 }
 
+function renderPeople() {
+  const data = state.contributors;
+  if (!data) return;
+  const cols = data.columns;
+  const people = data.contributors;
+
+  $("people-sub").textContent = people.length
+    ? `${people.length} ${people.length === 1 ? "pessoa" : "pessoas"} com tempo`
+      + " registrado no recorte atual. Clique para abrir o perfil."
+    : "Ninguem com tempo registrado neste recorte.";
+
+  $("people").innerHTML = people.map((c) => {
+    const segs = cols.map((col) => {
+      const bucket = c.by_label[col];
+      if (!bucket || !bucket.hours) return "";
+      return `<i style="flex:${(bucket.hours / c.total_hours) * 100};background:${colorOf(col)}"
+                 data-label="${esc(col)}" data-value="${esc(bucket.human)}"></i>`;
+    }).join("");
+    const focusTime = state.focus ? c.by_label[state.focus]?.human || "0h" : null;
+    return `<button class="person" data-name="${esc(c.contributor)}"
+                    aria-pressed="${state.person === c.contributor}">
+      <div class="person-top">
+        <span class="avatar">${esc(initials(c.contributor))}</span>
+        <span class="person-id">
+          <b title="${esc(c.contributor)}">${esc(c.contributor)}</b>
+          <span>${c.issues} ${c.issues === 1 ? "issue" : "issues"} ·
+                ${c.closed_issues} fechadas</span>
+        </span>
+      </div>
+      <div class="person-figure"><b>${esc(c.total_human)}</b><span>acumuladas</span></div>
+      <div class="stack" data-name="${esc(c.contributor)}">${segs}</div>
+      <div class="person-foot">
+        <span><em>${wipOf(c, cols)}</em> em coluna agora</span>
+        ${focusTime ? `<span><em>${esc(focusTime)}</em> em ${esc(state.focus)}</span>` : ""}
+      </div>
+      ${c.review_hours ? `<div class="person-review" title="Tempo em ${esc(state.review || "revisao")}, contando os cards de outras pessoas">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg>
+        <em>${esc(c.review_human)}</em> revisando
+        <span>· ${c.review_issues} ${c.review_issues === 1 ? "card" : "cards"}</span>
+      </div>` : ""}
+      ${c.waiting_hours ? `<div class="person-debt" title="Tempo que cards ficaram parados na fila esperando por esta pessoa">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+        <em>${esc(c.waiting_human)}</em> de espera causada
+        <span>· ${c.waiting_issues} ${c.waiting_issues === 1 ? "card" : "cards"}</span>
+      </div>` : ""}
+    </button>`;
+  }).join("");
+
+  $("people").querySelectorAll(".stack i").forEach((seg) => {
+    seg.addEventListener("mousemove", (ev) => {
+      ev.stopPropagation();
+      tip.show(tipRows(seg.parentElement.dataset.name, [
+        { color: seg.style.background, label: seg.dataset.label, value: seg.dataset.value },
+      ]), ev.clientX, ev.clientY);
+    });
+    seg.addEventListener("mouseleave", tip.hide);
+  });
+  $("people").querySelectorAll(".person").forEach((card) => {
+    card.addEventListener("click", () => openProfile(card.dataset.name));
+  });
+
+  renderLoad(people, cols);
+}
+
