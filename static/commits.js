@@ -153,3 +153,31 @@ function renderHeatmap(heat) {
 
 /* ── identidades divergentes ──────────────────────────────────────────── */
 
+function renderIdentities(autores) {
+  const card = $("c-identities-card");
+  // so vale mostrar quem o dash nao conseguiu casar com um usuario do GitLab
+  const soltos = autores.filter((a) => !a.gitlab_name);
+  if (!soltos.length) { card.hidden = true; return; }
+
+  card.hidden = false;
+  $("c-identities-sub").innerHTML =
+    `O autor de um commit vem do <code>git config</code> da maquina, nao do usuario do
+     GitLab. ${soltos.length} ${soltos.length === 1 ? "identidade nao bateu" : "identidades nao bateram"}
+     com ninguem do board — normalmente e o mesmo nome escrito de outro jeito,
+     e nesse caso os commits da pessoa aparecem divididos.`;
+
+  $("c-identities").innerHTML =
+    `<thead><tr><th>Autor no git</th><th>E-mails</th>
+      <th class="num">Commits</th><th>Usuario do GitLab</th></tr></thead><tbody>` +
+    autores.map((a) => `<tr>
+      <td>${esc(a.author)}</td>
+      <td class="muted">${a.emails.map((e) => `<span class="tag-plain">${esc(e)}</span>`).join(" ")}</td>
+      <td class="num">${a.commits}</td>
+      <td>${a.gitlab_name
+        ? `<span class="tag-pill"><i class="swatch round" style="background:var(--pos)"></i>${esc(a.gitlab_name)}</span>`
+        : `<span class="muted">nao identificado</span>`}</td>
+    </tr>`).join("") + `</tbody>`;
+}
+
+/* ── tabela de commits recentes ───────────────────────────────────────── */
+
