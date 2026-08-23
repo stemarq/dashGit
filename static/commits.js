@@ -269,3 +269,39 @@ async function loadCommits() {
   }
 }
 
+/** Uma opcao por pessoa, nao por assinatura de git: quem commita como
+ *  `lucas.delmirio` e como "Lucas Delmirio da Silva" e uma pessoa so. */
+function renderAuthorFilter(autores) {
+  const select = $("c-author");
+  const pessoas = new Map();
+  for (const a of autores) {
+    const nome = a.gitlab_name || a.author;
+    const atual = pessoas.get(nome) || { nome, commits: 0 };
+    atual.commits += a.commits;
+    pessoas.set(nome, atual);
+  }
+  const ordenadas = [...pessoas.values()].sort((a, b) => b.commits - a.commits);
+  const assinatura = ordenadas.map((p) => p.nome).join("|");
+  if (select.dataset.filled === assinatura) {
+    select.value = commitFilters.author;
+    return;
+  }
+  select.innerHTML = `<option value="">Todo o time</option>`
+    + ordenadas.map((p) =>
+        `<option value="${esc(p.nome)}">${esc(p.nome)} (${p.commits})</option>`).join("");
+  select.dataset.filled = assinatura;
+  select.value = commitFilters.author;
+}
+
+$("c-author").addEventListener("change", (ev) => {
+  commitFilters.author = ev.target.value;
+  loadCommits();
+});
+
+$("c-only-off").addEventListener("click", () => {
+  commitFilters.onlyOff = !commitFilters.onlyOff;
+  $("c-only-off").setAttribute("aria-pressed", String(commitFilters.onlyOff));
+  $("c-only-off").classList.toggle("btn-primary", commitFilters.onlyOff);
+  loadCommits();
+});
+
