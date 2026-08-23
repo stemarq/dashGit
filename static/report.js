@@ -328,3 +328,25 @@ function renderSummaryIssues(d) {
     + `</tbody>`;
 }
 
+function renderSummaryCommits(d) {
+  const c = d.commits;
+  $("s-commits-sub").innerHTML = `Regra: <code>${esc(c.rule)}</code>.`
+    + ` <b>${c.off}</b> de ${c.total} commits desta sprint fogem dela.`
+    + ` A sprint de um commit e a da issue que ele cita.`
+    + outsidersNote(c.outsiders);
+
+  $("s-commits").innerHTML =
+    `<thead><tr><th>Commit</th><th>Mensagem</th><th>Autor</th>
+      <th>O que quebra</th></tr></thead><tbody>`
+    + (c.offenders.length ? c.offenders.map((x) => `<tr class="off-row">
+        <td><a href="${esc(x.web_url)}" target="_blank" rel="noreferrer"
+               style="font-family:ui-monospace,monospace;font-size:12px">${esc(x.short_id)}</a></td>
+        <td class="title-cell">${esc(x.title)}</td>
+        <td class="muted">${esc(x.author || "?")}</td>
+        <td>${x.convention.map((r) =>
+          `<span class="tag-plain off">${esc(c.reason_labels[r] || r)}</span>`).join(" ")}</td>
+      </tr>`).join("")
+      : `<tr><td colspan="4" class="muted">Nenhum commit fora do padrao nesta sprint.</td></tr>`)
+    + `</tbody>`;
+}
+
