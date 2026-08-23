@@ -156,3 +156,23 @@ function renderLoad(people, cols) {
 
 /* ── perfil ───────────────────────────────────────────────────────────── */
 
+async function openProfile(name) {
+  state.person = name;
+  $("people").querySelectorAll(".person").forEach((card) =>
+    card.setAttribute("aria-pressed", String(card.dataset.name === name)));
+
+  const panel = $("profile");
+  try {
+    const p = params();
+    p.set("name", name);
+    const data = await api("/metrics/contributor", p);
+    panel.hidden = false;
+    renderProfile(data);
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) {
+    panel.hidden = true;
+    state.person = null;
+    toast(`Nao foi possivel abrir o perfil: ${e.message}`, 5000);
+  }
+}
+
