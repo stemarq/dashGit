@@ -409,3 +409,12 @@ def test_perfil_inclui_quem_so_revisou(monkeypatch):
     assert approx(issue1["working_hours"], 5)      # nao as 15h da issue inteira
 
 
+def test_perfil_de_quem_executou_nao_leva_a_revisao():
+    seed()
+    perfil = metrics.contributor_detail(1, "Ana")
+    assert "Review" not in perfil["by_label"]
+    issue1 = next(i for i in perfil["issues"] if i["iid"] == 1)
+    assert issue1["role"] == ["Doing"]
+    assert approx(issue1["focus_hours"], 10)
+
+
