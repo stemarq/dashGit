@@ -151,3 +151,32 @@ function renderReportColumns(d) {
     + `</tbody>`;
 }
 
+function renderReportPeople(d) {
+  $("r-people-sub").innerHTML = `Acumulado de cada pessoa dentro da sprint`
+    + (d.review_label ? `, com o quanto disso foi revisando em <b>${esc(d.review_label)}</b>` : "")
+    + `. So as sprints com tempo registrado aparecem.`;
+
+  const blocos = d.sprints.filter((s) => s.people.length);
+  $("r-people").innerHTML = blocos.length ? blocos.map((s) => {
+    const topo = Math.max(...s.people.map((p) => p.hours)) || 1;
+    return `<div class="r-block">
+      <div class="r-block-head"><b>${esc(s.milestone)}</b>
+        <span class="muted">${s.closed_issues}/${s.issues} fechadas · ${esc(s.total_human)}
+          no total</span></div>
+      ${s.people.map((p) => `<div class="load-row">
+        <div>
+          <div class="row-name">
+            <span class="avatar">${esc(initials(p.contributor))}</span>
+            <span title="${esc(p.contributor)}">${esc(p.contributor)}</span>
+            ${p.review_hours ? `<span class="tag-plain">${esc(fmtH(p.review_hours))} revisando</span>` : ""}
+          </div>
+          <div class="progress"><i style="width:${(p.hours / topo) * 100}%;background:${colorOf(state.focus)}"></i></div>
+        </div>
+        <div class="row-total">${esc(p.human)}
+          <div class="sprint-when" style="text-align:right">${p.closed_issues}/${p.issues} fechadas</div>
+        </div>
+      </div>`).join("")}
+    </div>`;
+  }).join("") : `<div class="empty">Nenhuma sprint com tempo registrado.</div>`;
+}
+
