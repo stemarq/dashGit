@@ -314,3 +314,41 @@ function outsidersNote(nota) {
     + ` as contas desta tela — ${quem}.`;
 }
 
+function renderCommitStats(t) {
+  const nota = outsidersNote(state.commits?.outsiders);
+  $("c-sub").innerHTML = t.commits
+    ? `Merge commits ficam de fora: eles repetem as linhas dos commits que trazem.${nota}`
+    : `Nenhum commit no periodo. Se o projeto acabou de ser sincronizado, rode o sync de novo.`;
+
+  $("c-stats").innerHTML = [
+    { label: "Commits", value: fmtInt(t.commits), note: `${t.authors} autores` },
+    {
+      label: "Linhas",
+      value: `+${fmtInt(t.additions)}`,
+      note: `-${fmtInt(t.deletions)} removidas · saldo ${t.net >= 0 ? "+" : ""}${fmtInt(t.net)}`,
+    },
+    {
+      label: "Ritmo",
+      value: String(t.commits_per_active_day),
+      note: `commits por dia com atividade (${t.active_days} dias)`,
+    },
+    {
+      label: "Tamanho medio",
+      value: `${t.avg_size}`,
+      note: "linhas mexidas por commit",
+    },
+  ].map((c) => `<div class="stat">
+      <div class="stat-label">${esc(c.label)}</div>
+      <div class="stat-row"><div class="stat-value">${esc(c.value)}</div></div>
+      <div class="delta"><span>${esc(c.note)}</span></div>
+    </div>`).join("");
+}
+
+
+/* ── conventional commits ─────────────────────────────────────────────── */
+
+/** Cor da aderencia: verde a partir de 80%, vermelho abaixo de 50%. Os
+ *  cortes sao arbitrarios de proposito — servem para varrer a tabela com o
+ *  olho, nao para dar nota. */
+const convColor = (pct) => pct >= 80 ? "var(--pos)" : pct < 50 ? "var(--neg)" : "var(--warn)";
+
