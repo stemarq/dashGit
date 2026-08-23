@@ -180,3 +180,12 @@ function renderReportPeople(d) {
   }).join("") : `<div class="empty">Nenhuma sprint com tempo registrado.</div>`;
 }
 
+function reportParams(extra = {}) {
+  const p = new URLSearchParams();
+  if ($("project").value) p.set("project", $("project").value);
+  const labels = $("labels").value.trim();
+  if (labels) p.set("labels", labels);
+  for (const [k, v] of Object.entries(extra)) p.set(k, v);
+  return p;
+}
+
