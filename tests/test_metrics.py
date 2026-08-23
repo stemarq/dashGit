@@ -268,3 +268,24 @@ def test_issues_ranqueadas_por_tempo_em_doing():
     assert por_lead["sorted_by"] == "lead_time_hours"
 
 
+def test_label_que_nao_e_coluna_nao_vira_tempo():
+    """Um card com Doing + DOCUMENTATION + ART 1 nao pode contar 3x o mesmo periodo."""
+    seed()
+    with session() as conn:
+        conn.executemany("INSERT INTO label_events VALUES (?,?,?,?,?,?,?,?)", [
+            (10, 1, 2, "add", "DOCUMENTATION", 2, "Ana", iso(-4)),
+            (11, 1, 2, "add", "ART 1", 2, "Ana", iso(-4)),
+        ])
+
+    report = metrics.contributor_report(1)
+    ana = next(c for c in report["contributors"] if c["contributor"] == "Ana")
+    assert set(ana["by_label"]) == {"Doing"}   # o Review foi movido pelo Bruno
+    assert "DOCUMENTATION" not in report["totals"]
+    # 10h + 4h em Doing — nada multiplicado pelas etiquetas
+    assert approx(ana["total_hours"], 14)
+
+    # e as etiquetas continuam visiveis no drill-down
+    issues = {i["iid"]: i for i in metrics.issue_report(1)["issues"]}
+    assert issues[2]["tags"] == ["ART 1", "DOCUMENTATION"]
+
+
