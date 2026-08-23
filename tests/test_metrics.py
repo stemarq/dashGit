@@ -235,3 +235,15 @@ def test_backlog_fica_fora_de_toda_conta_de_tempo():
     assert "Backlog" in metrics.board_labels(1, include_excluded=True)
 
 
+def test_pedir_a_coluna_excluida_explicitamente_ganha():
+    seed()
+    with session() as conn:
+        conn.executemany("INSERT INTO label_events VALUES (?,?,?,?,?,?,?,?)", [
+            (8, 1, 2, "add", "Backlog", 2, "Ana", iso(-54)),
+            (9, 1, 2, "remove", "Backlog", 2, "Ana", iso(-4)),
+        ])
+    report = metrics.contributor_report(1, labels=["Backlog"])
+    ana = next(c for c in report["contributors"] if c["contributor"] == "Ana")
+    assert approx(ana["by_label"]["Backlog"]["hours"], 50)
+
+
