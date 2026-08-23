@@ -452,3 +452,21 @@ def _com_fila(monkeypatch):
     escopo_amplo(monkeypatch)
 
 
+def test_espera_e_demerito_de_quem_pegou_a_revisao(monkeypatch):
+    """A issue 1 espera em Review das -20h as -15h e o Bruno e quem a pega.
+    A espera e demerito dele, nao da Ana que terminou e colocou na fila."""
+    seed()
+    with session() as conn:
+        # depois do Review, a issue volta para Doing pelas maos do Bruno
+        conn.execute(
+            "INSERT INTO label_events VALUES (20,1,1,'add','Doing',3,'Bruno',?)", (iso(-15),)
+        )
+    _com_fila(monkeypatch)
+
+    report = metrics.contributor_report(1)
+    por_pessoa = {c["contributor"]: c for c in report["contributors"]}
+    assert approx(por_pessoa["Bruno"]["waiting_hours"], 5)
+    assert por_pessoa["Bruno"]["waiting_issues"] == 1
+    assert por_pessoa["Ana"]["waiting_hours"] == 0     # ela so colocou na fila
+
+
