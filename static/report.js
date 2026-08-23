@@ -128,3 +128,26 @@ function renderReport(d) {
   renderReportPeople(d);
 }
 
+function renderReportColumns(d) {
+  const cols = d.columns;
+  // cada coluna tem sua propria escala: comparar Doing com Backlog na mesma
+  // regua esconderia a variacao das colunas curtas
+  const teto = {};
+  for (const c of cols) {
+    teto[c] = Math.max(1, ...d.sprints.map((s) => s.by_label[c]?.hours || 0));
+  }
+  $("r-columns").innerHTML =
+    `<thead><tr><th>Sprint</th>${cols.map((c) =>
+      `<th class="num"><span class="tag-pill"><i class="swatch round" style="background:${colorOf(c)}"></i>${esc(c)}</span></th>`).join("")}</tr></thead><tbody>`
+    + d.sprints.map((s) => `<tr>
+        <td><b>${esc(s.milestone)}</b></td>
+        ${cols.map((c) => {
+          const v = s.by_label[c];
+          return `<td class="num">${v ? esc(v.human) : `<span class="muted">—</span>`}
+            <div class="mini-bar"><i style="width:${((v?.hours || 0) / teto[c]) * 100}%;background:${colorOf(c)}"></i></div>
+          </td>`;
+        }).join("")}
+      </tr>`).join("")
+    + `</tbody>`;
+}
+
