@@ -369,3 +369,17 @@ def test_contributor_detail_respeita_janela_mas_mantem_a_issue():
     assert approx(next(i for i in perfil["issues"] if i["iid"] == 1)["focus_hours"], 10)
 
 
+def test_tempo_de_revisao_vai_para_quem_revisou(monkeypatch):
+    escopo_amplo(monkeypatch)
+    """Fluxo real: X faz e move para Waiting Review; Y move para Review e fecha.
+    O tempo de Review e metrica de Y, mesmo com a issue atribuida a X."""
+    seed()
+    report = metrics.contributor_report(1)
+    por_pessoa = {c["contributor"]: c for c in report["contributors"]}
+
+    # a issue 1 e da Ana, mas quem moveu para Review foi o Bruno
+    assert "Review" not in por_pessoa["Ana"]["by_label"]
+    assert approx(por_pessoa["Bruno"]["by_label"]["Review"]["hours"], 5)
+    assert approx(por_pessoa["Ana"]["by_label"]["Doing"]["hours"], 14)
+
+
