@@ -320,3 +320,17 @@ def test_total_nunca_passa_do_tempo_de_relogio():
     assert counted <= wall + 0.05
 
 
+def test_projeto_sem_board_conta_todas_as_labels():
+    """Sem board sincronizado nao da para saber o que e coluna — melhor contar
+    tudo do que devolver um dashboard vazio."""
+    seed()
+    with session() as conn:
+        conn.execute("DELETE FROM board_lists WHERE project_id = 1")
+        conn.execute(
+            "INSERT INTO label_events VALUES (15,1,2,'add','DOCUMENTATION',2,'Ana',?)", (iso(-4),)
+        )
+    report = metrics.contributor_report(1)
+    ana = next(c for c in report["contributors"] if c["contributor"] == "Ana")
+    assert "DOCUMENTATION" in ana["by_label"]
+
+
