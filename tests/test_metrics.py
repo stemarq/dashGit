@@ -393,3 +393,19 @@ def test_modo_assignee_devolve_o_comportamento_antigo(monkeypatch):
     assert approx(ana["total_hours"], 19)
 
 
+def test_perfil_inclui_quem_so_revisou(monkeypatch):
+    escopo_amplo(monkeypatch)
+    seed()
+    perfil = metrics.contributor_detail(1, "Bruno")
+    # o Bruno nao e responsavel por nenhuma issue, mas revisou a 1 e tocou a 3
+    assert {i["iid"] for i in perfil["issues"]} == {1, 3}
+    assert approx(perfil["by_label"]["Review"]["hours"], 5)
+    assert approx(perfil["by_label"]["Doing"]["hours"], 2)
+
+    # e a issue 1 aparece no perfil dele so com a parte que foi dele
+    issue1 = next(i for i in perfil["issues"] if i["iid"] == 1)
+    assert issue1["role"] == ["Review"]
+    assert list(issue1["time_by_column"]) == ["Review"]
+    assert approx(issue1["working_hours"], 5)      # nao as 15h da issue inteira
+
+
