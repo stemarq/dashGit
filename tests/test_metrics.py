@@ -186,3 +186,33 @@ def test_lista_de_milestones_inclui_orfas_e_contagem():
     assert list(rows)[-1] == metrics.NO_MILESTONE
 
 
+def test_milestone_report_compara_sprints():
+    seed()
+    report = metrics.milestone_report(1)
+    rows = {m["milestone"]: m for m in report["milestones"]}
+
+    s1 = rows["Sprint 1"]
+    assert s1["issues"] == 1 and s1["closed_issues"] == 1
+    assert s1["completion"] == 100.0
+    assert approx(s1["by_label"]["Doing"]["hours"], 10)
+    assert approx(s1["by_label"]["Review"]["hours"], 5)
+    assert approx(s1["avg_lead_hours"], 20)
+    assert s1["due_date"] == "2026-01-14"
+
+    s2 = rows["Sprint 2"]
+    assert s2["closed_issues"] == 0 and s2["completion"] == 0.0
+    assert approx(s2["by_label"]["Doing"]["hours"], 4)
+
+    # ordem: sprint mais recente primeiro, "(sem sprint)" por ultimo
+    ordered = [m["milestone"] for m in report["milestones"]]
+    assert ordered == ["Sprint 2", "Sprint 1", metrics.NO_MILESTONE]
+
+
+def test_milestone_report_ignora_janela_de_periodo():
+    seed()
+    # milestone_report nao aceita `since` de proposito: a soma e da sprint toda
+    total = metrics.milestone_report(1)["milestones"]
+    doing = sum(m["by_label"].get("Doing", {}).get("hours", 0) for m in total)
+    assert approx(doing, 16)   # 10h + 4h + 2h
+
+
