@@ -262,3 +262,61 @@ function renderProfileSprints(d) {
     </div>`).join("");
 }
 
+function renderProfileIssues(d) {
+  const focus = d.focus_label;
+  $("p-issues-sub").innerHTML =
+    (state.scope === "assigned"
+      ? `Issues atribuidas a ${esc(d.contributor)}`
+        + (d.review_label ? ` e as que ela revisou` : "")
+      : `Issues em que ${esc(d.contributor)} fez alguma etapa`)
+    + (focus
+        ? `, ranqueadas pelo maior tempo dela no card (<b>${esc(focus)}</b>`
+          + (d.review_label ? ` ou <b>${esc(d.review_label)}</b>)` : ")")
+        : "")
+    + (state.scope === "assigned"
+        ? `. As horas sao das etapas que ela mesma fez.`
+        : `. As horas sao so das colunas que foram dela.`)
+    + (d.review_label
+        ? ` A coluna <b>Revisando</b> e o tempo dela em <b>${esc(d.review_label)}</b>,`
+          + ` medido mesmo nos cards de outras pessoas.`
+        : "");
+
+  const review = d.review_label;
+  const max = Math.max(1, ...d.issues.map((i) => i.focus_hours));
+  $("p-issues").innerHTML =
+    `<thead><tr><th>#</th><th>Issue</th><th>Sprint</th><th>Fez</th>
+      <th class="num">${esc(focus ? `Tempo em ${focus}` : "Tempo trabalhado")}</th>
+      <th class="num">${esc(review ? `Revisando (${review})` : "Tempo dela")}</th>
+      ${state.queues.length ? `<th class="num">Deixou esperando</th>` : ""}
+      </tr></thead><tbody>` +
+    (d.issues.length ? d.issues.slice(0, 25).map((i) => `<tr>
+        <td class="muted">${i.iid}</td>
+        <td class="title-cell">
+          <a href="${esc(i.web_url)}" target="_blank" rel="noreferrer">${esc(i.title)}</a>
+          ${(i.tags || []).length ? `<div class="tags">${i.tags.slice(0, 4).map((tag) =>
+            `<span class="tag-plain">${esc(tag)}</span>`).join("")}</div>` : ""}
+        </td>
+        <td class="muted">${esc(i.milestone)}</td>
+        <td>${(i.role || []).map((label) =>
+          `<span class="tag-pill" style="margin-right:4px"><i class="swatch round" style="background:${colorOf(label)}"></i>${esc(label)}</span>`
+        ).join("") || `<span class="muted">—</span>`}</td>
+        <td class="num"><b>${esc(fmtH(i.focus_hours))}</b>
+          <div class="mini-bar">
+            <i style="width:${(i.focus_hours / max) * 100}%;background:${colorOf(focus)}"></i>
+          </div>
+        </td>
+        <td class="num ${review ? (i.review_hours ? "review-cell" : "muted") : "muted"}">${
+          esc(fmtH(review ? i.review_hours : i.working_hours))}</td>
+        ${state.queues.length
+          ? `<td class="num ${i.waiting_hours ? "debt-cell" : "muted"}">${esc(fmtH(i.waiting_hours))}</td>`
+          : ""}
+      </tr>`).join("")
+      : `<tr><td colspan="7" class="muted">Sem issues neste recorte.</td></tr>`) + `</tbody>`;
+}
+
+$("p-close").addEventListener("click", () => {
+  $("profile").hidden = true;
+  state.person = null;
+  $("people").querySelectorAll(".person")
+    .forEach((card) => card.setAttribute("aria-pressed", "false"));
+});
