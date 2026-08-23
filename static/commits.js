@@ -19,3 +19,69 @@ const fmtBucket = (iso, gran) =>
 
 /* ── barras verticais de commits por dia ──────────────────────────────── */
 
+function renderDailyCommits(daily, gran) {
+  const host = $("c-daily");
+  host.innerHTML = "";
+  $("c-daily-sub").textContent = gran === "day"
+    ? "Um ponto por dia."
+    : `Um ponto por ${BUCKET[gran].nome} — o intervalo e longo demais para barras diarias.`;
+  if (daily.length < 2) {
+    host.innerHTML = `<div class="empty">Sem commits no periodo.</div>`;
+    return;
+  }
+
+  const W = host.clientWidth || 900;
+  const H = 220, padL = 34, padR = 6, padT = 12, padB = 26;
+  const iw = W - padL - padR, ih = H - padT - padB;
+  const max = Math.max(1, ...daily.map((d) => d.commits));
+  const nice = Math.max(4, Math.ceil(max / 4) * 4);
+  const step = iw / daily.length;
+  const bw = Math.max(2, Math.min(18, step - 2));
+
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img" });
+  svg.setAttribute("aria-label", "Commits por dia");
+
+  const axis = svgEl("g", { class: "axis" });
+  for (let i = 0; i <= 4; i++) {
+    const v = (nice / 4) * i;
+    const y = padT + ih - (v / nice) * ih;
+    axis.appendChild(svgEl("line", { class: "grid-line", x1: padL, x2: W - padR, y1: y, y2: y }));
+    const t = svgEl("text", { x: padL - 8, y: y + 4, "text-anchor": "end" });
+    t.textContent = String(Math.round(v));
+    axis.appendChild(t);
+  }
+  svg.appendChild(axis);
+
+  daily.forEach((d, i) => {
+    if (!d.commits) return;
+    const h = (d.commits / nice) * ih;
+    const x = padL + step * i + (step - bw) / 2;
+    const bar = svgEl("rect", {
+      x, y: padT + ih - h, width: bw, height: Math.max(h, 2), rx: 3,
+      fill: cssVar("--s1"),
+    });
+    bar.style.cursor = "default";
+    bar.addEventListener("mousemove", (ev) => tip.show(tipRows(fmtBucket(d.date, gran), [
+      { color: cssVar("--s1"), label: "Commits", value: String(d.commits) },
+      { label: "Linhas", value: `+${fmtInt(d.additions)} / -${fmtInt(d.deletions)}` },
+    ]), ev.clientX, ev.clientY));
+    bar.addEventListener("mouseleave", tip.hide);
+    svg.appendChild(bar);
+  });
+
+  const marcas = Math.max(1, Math.ceil(daily.length / 8));
+  const xa = svgEl("g", { class: "axis" });
+  daily.forEach((d, i) => {
+    if (i % marcas) return;
+    const t = svgEl("text", {
+      x: padL + step * i + step / 2, y: H - 6, "text-anchor": "middle",
+    });
+    t.textContent = fmtBucket(d.date, gran);
+    xa.appendChild(t);
+  });
+  svg.appendChild(xa);
+  host.appendChild(svg);
+}
+
+/* ── ranking de autores ───────────────────────────────────────────────── */
+
