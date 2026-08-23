@@ -73,3 +73,13 @@ async function loadComparison() {
   }
 }
 
+async function loadSprintSummary(sprint) {
+  try {
+    const data = await api("/report/sprint", reportParams({ milestone: sprint }));
+    state.summary = data;
+    renderSummary(data);
+  } catch (e) {
+    $("s-sub").textContent = `Nao foi possivel montar o resumo: ${e.message}`;
+  }
+}
+
