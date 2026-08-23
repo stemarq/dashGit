@@ -306,3 +306,17 @@ def test_colunas_simultaneas_nao_contam_o_mesmo_periodo_duas_vezes():
     assert approx(por_coluna["Review"], 3)
 
 
+def test_total_nunca_passa_do_tempo_de_relogio():
+    seed()
+    with session() as conn:
+        conn.executemany("INSERT INTO label_events VALUES (?,?,?,?,?,?,?,?)", [
+            (13, 1, 1, "add", "To Do", 2, "Ana", iso(-30)),      # sobrepoe Doing inteiro
+            (14, 1, 1, "remove", "To Do", 2, "Ana", iso(-20)),
+        ])
+    timelines = {t.iid: t for t in metrics.build_timelines(1)}
+    tl = timelines[1]
+    wall = (tl.closed_at - tl.created_at).total_seconds() / 3600
+    counted = sum(i.seconds(NOW) for i in tl.intervals) / 3600
+    assert counted <= wall + 0.05
+
+
