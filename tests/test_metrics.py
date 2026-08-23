@@ -349,3 +349,13 @@ def test_contributor_detail_monta_o_perfil():
     assert approx(perfil["issues"][0]["focus_hours"], 10)
 
 
+def test_contributor_detail_agrupa_por_sprint():
+    seed()
+    perfil = metrics.contributor_detail(1, "Ana")
+    sprints = {s["milestone"]: s for s in perfil["by_milestone"]}
+    assert sprints["Sprint 1"]["issues"] == 1
+    assert sprints["Sprint 1"]["completion"] == 100.0
+    assert sprints["Sprint 2"]["completion"] == 0.0
+    assert [s["milestone"] for s in perfil["by_milestone"]] == ["Sprint 2", "Sprint 1"]
+
+
