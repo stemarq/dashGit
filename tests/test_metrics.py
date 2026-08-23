@@ -108,3 +108,26 @@ def test_label_ainda_aberta_conta_ate_agora():
     assert approx(itv.seconds(NOW) / 3600, 4)
 
 
+def test_contributor_report_soma_por_coluna(monkeypatch):
+    escopo_amplo(monkeypatch)
+    seed()
+    report = metrics.contributor_report(1, labels=["Doing"])
+    ana = next(c for c in report["contributors"] if c["contributor"] == "Ana")
+    assert approx(ana["by_label"]["Doing"]["hours"], 14)  # 10h fechada + 4h em aberto
+    assert ana["by_label"]["Doing"]["issues"] == 2
+    assert ana["by_label"]["Doing"]["still_in_column"] == 1
+    assert ana["closed_issues"] == 1
+
+    # a issue 3 nao tem responsavel, mas quem a moveu para Doing foi o Bruno
+    bruno = next(c for c in report["contributors"] if c["contributor"] == "Bruno")
+    assert approx(bruno["by_label"]["Doing"]["hours"], 2)
+
+
+def test_janela_since_recorta_intervalo():
+    seed()
+    report = metrics.contributor_report(1, labels=["Doing"], since=NOW - timedelta(hours=5))
+    ana = next(c for c in report["contributors"] if c["contributor"] == "Ana")
+    # so as 4h da issue 2 caem na janela; a issue 1 saiu de Doing ha 20h
+    assert approx(ana["by_label"]["Doing"]["hours"], 4)
+
+
