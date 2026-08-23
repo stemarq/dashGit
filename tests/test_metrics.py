@@ -216,3 +216,22 @@ def test_milestone_report_ignora_janela_de_periodo():
     assert approx(doing, 16)   # 10h + 4h + 2h
 
 
+def test_backlog_fica_fora_de_toda_conta_de_tempo():
+    seed()
+    with session() as conn:
+        # a issue 2 passou 50h no Backlog antes de entrar em Doing
+        conn.executemany("INSERT INTO label_events VALUES (?,?,?,?,?,?,?,?)", [
+            (8, 1, 2, "add", "Backlog", 2, "Ana", iso(-54)),
+            (9, 1, 2, "remove", "Backlog", 2, "Ana", iso(-4)),
+        ])
+        conn.execute("INSERT INTO board_lists VALUES (1, 10, 'Dev', 99, -1, 'Backlog')")
+
+    report = metrics.contributor_report(1)
+    ana = next(c for c in report["contributors"] if c["contributor"] == "Ana")
+    assert "Backlog" not in ana["by_label"]
+    assert "Backlog" not in report["totals"]
+    assert "Backlog" not in metrics.board_labels(1)
+    # e continua visivel para quem quiser olhar de proposito
+    assert "Backlog" in metrics.board_labels(1, include_excluded=True)
+
+
