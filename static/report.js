@@ -249,3 +249,39 @@ function renderSummary(d) {
 /** Mesma faixa de cor da tela de commits: verde >= 80%, vermelho < 50%. */
 const convRate = (pct) => pct >= 80 ? "var(--pos)" : pct < 50 ? "var(--neg)" : "var(--warn)";
 
+function renderSummaryPeople(d) {
+  const temFila = state.queues.length > 0;
+  $("s-people-sub").innerHTML = `Todas as pessoas com tempo registrado em`
+    + ` <b>${esc(d.milestone.milestone)}</b>`
+    + (d.review_label ? `, com o quanto foi revisando em ${esc(d.review_label)}` : "")
+    + `. A convencao e a dos commits desta sprint, por pessoa.`
+    + (d.commit_only.length
+        ? ` ${d.commit_only.map((c) => esc(c.person)).join(", ")} commitou na sprint`
+          + ` sem mover card nenhum e nao aparece aqui.`
+        : "");
+
+  const max = Math.max(1, ...d.people.map((p) => p.total_hours));
+  $("s-people").innerHTML =
+    `<thead><tr><th>Pessoa</th><th class="num">Acumulado</th>
+      ${d.review_label ? `<th class="num">Revisando</th>` : ""}
+      ${temFila ? `<th class="num">Espera causada</th>` : ""}
+      <th class="num">Issues</th><th class="num">Convencao</th></tr></thead><tbody>`
+    + (d.people.length ? d.people.map((p) => `<tr>
+        <td><span class="row-name">
+          <span class="avatar" style="width:24px;height:24px;font-size:10px">${esc(initials(p.contributor))}</span>
+          <span title="${esc(p.contributor)}">${esc(p.contributor)}</span></span></td>
+        <td class="num"><b>${esc(p.total_human)}</b>
+          <div class="mini-bar"><i style="width:${(p.total_hours / max) * 100}%;background:${colorOf(state.focus)}"></i></div></td>
+        ${d.review_label ? `<td class="num ${p.review_hours ? "review-cell" : "muted"}">${esc(fmtH(p.review_hours))}</td>` : ""}
+        ${temFila ? `<td class="num ${p.waiting_hours ? "debt-cell" : "muted"}">${esc(fmtH(p.waiting_hours))}</td>` : ""}
+        <td class="num muted">${p.closed_issues}/${p.issues}</td>
+        <td class="num">${p.convention
+          ? `<b style="color:${convRate(p.convention.pct)}">${p.convention.pct}%</b>
+             <div class="mini-bar"><i style="width:${p.convention.pct}%;background:${convRate(p.convention.pct)}"></i></div>
+             <span class="sprint-when">${p.convention.ok}/${p.convention.commits} commits</span>`
+          : `<span class="muted">sem commit</span>`}</td>
+      </tr>`).join("")
+      : `<tr><td colspan="6" class="muted">Sem tempo registrado nesta sprint.</td></tr>`)
+    + `</tbody>`;
+}
+
