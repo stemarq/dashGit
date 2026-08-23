@@ -233,3 +233,13 @@ function renderRecentCommits(data) {
    listagem — encolher os totais junto seria mentir sobre o volume. */
 const commitFilters = { author: "", onlyOff: false };
 
+function commitParams(extra = {}) {
+  const p = new URLSearchParams();
+  if ($("project").value) p.set("project", $("project").value);
+  // sprint e coluna sao dimensoes de board; commit nao passa por elas
+  if ($("days").value && !$("milestone").value) p.set("days", $("days").value);
+  if (commitFilters.author) p.set("author", commitFilters.author);
+  for (const [k, v] of Object.entries(extra)) p.set(k, v);
+  return p;
+}
+
