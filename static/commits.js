@@ -243,3 +243,29 @@ function commitParams(extra = {}) {
   return p;
 }
 
+async function loadCommits() {
+  const p = commitParams();
+
+  try {
+    const [data, ids, conv] = await Promise.all([
+      api("/metrics/commits", commitParams(
+        commitFilters.onlyOff ? { only_off: "true" } : {})),
+      api("/commit-authors", new URLSearchParams(
+        $("project").value ? { project: $("project").value } : {})).catch(() => ({ authors: [] })),
+      api("/metrics/commit-convention", p).catch(() => null),
+    ]);
+    state.commits = data;
+    state.convention = conv;
+    renderAuthorFilter(ids.authors);
+    renderCommitStats(data.totals);
+    renderDailyCommits(data.series, data.granularity);
+    renderCommitAuthors(data.authors);
+    renderHeatmap(data.heatmap);
+    renderIdentities(ids.authors);
+    renderConvention(conv);
+    renderRecentCommits(data);
+  } catch (e) {
+    $("c-sub").textContent = `Nao foi possivel carregar: ${e.message}`;
+  }
+}
+
