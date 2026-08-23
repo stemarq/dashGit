@@ -158,3 +158,20 @@ def test_resolve_project_por_path_e_id():
     assert metrics.resolve_project_id("nao/existe") is None
 
 
+def test_filtro_por_milestone_recorta_issues():
+    seed()
+    report = metrics.contributor_report(1, labels=["Doing"], milestone="Sprint 1")
+    ana = next(c for c in report["contributors"] if c["contributor"] == "Ana")
+    assert approx(ana["by_label"]["Doing"]["hours"], 10)   # so a issue 1
+    assert ana["by_label"]["Doing"]["issues"] == 1
+    assert report["milestone"] == "Sprint 1"
+
+
+def test_filtro_sem_sprint_pega_issues_orfas(monkeypatch):
+    escopo_amplo(monkeypatch)
+    seed()
+    report = metrics.contributor_report(1, milestone=metrics.NO_MILESTONE)
+    assert [c["contributor"] for c in report["contributors"]] == ["Bruno"]
+    assert approx(report["contributors"][0]["by_label"]["Doing"]["hours"], 2)
+
+
