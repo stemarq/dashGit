@@ -289,3 +289,20 @@ def test_label_que_nao_e_coluna_nao_vira_tempo():
     assert issues[2]["tags"] == ["ART 1", "DOCUMENTATION"]
 
 
+def test_colunas_simultaneas_nao_contam_o_mesmo_periodo_duas_vezes():
+    seed()
+    with session() as conn:
+        # a issue 2 ganha Review as -3h enquanto ainda esta em Doing (desde -4h)
+        conn.execute(
+            "INSERT INTO label_events VALUES (12,1,2,'add','Review',2,'Ana',?)", (iso(-3),)
+        )
+    timelines = {t.iid: t for t in metrics.build_timelines(1)}
+    total = sum(i.seconds(NOW) for i in timelines[2].intervals) / 3600
+    assert approx(total, 4)     # 4h de relogio, nao 4h + 3h
+
+    por_coluna = {i.label: i.seconds(NOW) / 3600 for i in timelines[2].intervals}
+    # a sobreposicao fica com a coluna mais avancada do board, como o GitLab mostra
+    assert approx(por_coluna["Doing"], 1)
+    assert approx(por_coluna["Review"], 3)
+
+
