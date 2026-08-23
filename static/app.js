@@ -1197,3 +1197,19 @@ window.addEventListener("resize", () => {
 
 /* ── boot ─────────────────────────────────────────────────────────────── */
 
+(function boot() {
+  const saved = localStorage.getItem("dashgit-theme");
+  if (saved) document.documentElement.dataset.theme = saved;
+  else if (window.matchMedia("(prefers-color-scheme: dark)").matches)
+    document.documentElement.dataset.theme = "dark";
+
+  $("me-initials").textContent = "V";
+
+  loadProjects()
+    .then(async (list) => {
+      if (!list.length) return toast("Nenhum projeto no cache. Clique em Sincronizar.", 0);
+      await loadMilestones($("project").value);
+      return safeRefresh();
+    })
+    .catch((e) => toast(e.message, 6000));
+})();
