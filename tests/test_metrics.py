@@ -383,3 +383,13 @@ def test_tempo_de_revisao_vai_para_quem_revisou(monkeypatch):
     assert approx(por_pessoa["Ana"]["by_label"]["Doing"]["hours"], 14)
 
 
+def test_modo_assignee_devolve_o_comportamento_antigo(monkeypatch):
+    seed()
+    monkeypatch.setattr(metrics, "attribution_mode", lambda: "assignee")
+    report = metrics.contributor_report(1)
+    ana = next(c for c in report["contributors"] if c["contributor"] == "Ana")
+    # com atribuicao por responsavel, o Review da Ana volta a contar para ela
+    assert approx(ana["by_label"]["Review"]["hours"], 5)
+    assert approx(ana["total_hours"], 19)
+
+
