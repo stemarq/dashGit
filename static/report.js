@@ -55,3 +55,11 @@ function renderScopePicker(sprint) {
   }
 }
 
+for (const id of ["r-scope", "s-scope"]) {
+  $(id).addEventListener("change", (ev) => {
+    // o filtro do topo continua sendo a fonte da verdade do recorte
+    $("milestone").value = ev.target.value;
+    $("milestone").dispatchEvent(new Event("change"));
+  });
+}
+
