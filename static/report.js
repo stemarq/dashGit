@@ -189,3 +189,21 @@ function reportParams(extra = {}) {
   return p;
 }
 
+// PDF sai pela caixa de impressao do navegador: a pagina se manda imprimir e
+// o "Salvar como PDF" faz o resto — nenhum motor de PDF no servidor
+$("r-pdf").addEventListener("click", () => {
+  const aba = window.open(`/api/report/sprints.html?${reportParams({ print: "1" })}`, "_blank");
+  toast(aba
+    ? "Relatorio aberto numa aba: escolha 'Salvar como PDF' no destino."
+    : "O navegador bloqueou a aba. Libere o popup deste site e tente de novo.", 5000);
+});
+
+$("r-export").addEventListener("click", () => {
+  // o proprio endpoint devolve Content-Disposition: attachment
+  window.location.href = `/api/report/sprints.html?${reportParams()}`;
+  toast("Gerando o relatorio para download...");
+});
+
+
+/* ── resumo de uma sprint ─────────────────────────────────────────────── */
+
