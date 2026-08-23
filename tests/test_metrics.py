@@ -131,3 +131,14 @@ def test_janela_since_recorta_intervalo():
     assert approx(ana["by_label"]["Doing"]["hours"], 4)
 
 
+def test_column_report_ordena_pelo_board():
+    seed()
+    report = metrics.column_report(1)
+    labels = [c["label"] for c in report["columns"]]
+    assert labels == ["Doing", "Review"]  # "To Do" nunca foi usada
+    doing = report["columns"][0]
+    assert doing["completed_passes"] == 2  # issues 1 e 3
+    assert doing["wip"] == 1               # issue 2
+    assert approx(doing["avg_hours"], 6)   # (10h + 2h) / 2
+
+
