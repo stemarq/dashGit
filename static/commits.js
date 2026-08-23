@@ -181,3 +181,55 @@ function renderIdentities(autores) {
 
 /* ── tabela de commits recentes ───────────────────────────────────────── */
 
+function renderRecentCommits(data) {
+  const recent = data.recent;
+  const rotulos = data.reason_labels || {};
+  const quem = commitFilters.author ? ` de ${commitFilters.author}` : "";
+
+  $("c-recent-title").textContent = commitFilters.onlyOff
+    ? "Commits fora do padrao" : "Ultimos commits";
+  $("c-recent-sub").innerHTML = commitFilters.onlyOff
+    ? `Os ${data.off_convention} commits${esc(quem)} que fogem da convencao no periodo`
+      + ` — listados os 30 mais recentes. Os numeros acima continuam sobre todos.`
+    : `Os 30 commits mais recentes${esc(quem)}.`
+      + (data.off_convention
+          ? ` <b>${data.off_convention}</b> dos ${data.totals.commits} fogem da convencao`
+            + ` e vem marcados.`
+          : ` Todos seguem a convencao.`);
+
+  $("c-recent").innerHTML =
+    `<thead><tr><th>Commit</th><th>Mensagem</th><th>Autor</th>
+      <th class="num">Linhas</th><th class="num">Quando</th></tr></thead><tbody>` +
+    (recent.length ? recent.map((c) => {
+      const fora = (c.convention || []).length;
+      return `<tr class="${fora ? "off-row" : ""}">
+      <td><a href="${esc(c.web_url)}" target="_blank" rel="noreferrer"
+             style="font-family:ui-monospace,monospace;font-size:12px">${esc(c.short_id)}</a></td>
+      <td class="title-cell">
+        <span class="msg">${fora ? `<span class="off-dot" title="Fora da convencao">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 21 19H3z"/><path d="M12 10v3.4M12 16.2v.4"/></svg>
+        </span>` : ""}${esc(c.title)}</span>
+        ${fora ? `<div class="tags">${c.convention.map((r) =>
+          `<span class="tag-plain off">${esc(rotulos[r] || r)}</span>`).join("")}</div>` : ""}
+      </td>
+      <td><span class="row-name"><span class="avatar" style="width:22px;height:22px;font-size:9px">${esc(initials(c.author || "?"))}</span>
+        <span>${esc(c.author)}</span></span></td>
+      <td class="num"><span class="pos">+${fmtInt(c.additions)}</span>
+        <span class="neg">-${fmtInt(c.deletions)}</span></td>
+      <td class="num muted">${esc(new Date(c.committed_at).toLocaleString("pt-BR",
+        { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }))}</td>
+    </tr>`; }).join("")
+      : `<tr><td colspan="5" class="muted">${commitFilters.onlyOff
+          ? "Nenhum commit fora do padrao neste recorte."
+          : "Sem commits no periodo."}</td></tr>`) + `</tbody>`;
+}
+
+/* ── carregamento ─────────────────────────────────────────────────────── */
+
+/* O filtro de pessoa e a lente "so fora do padrao" tem alcances diferentes de
+   proposito: escolher uma pessoa recorta a tela inteira (ritmo, ranking,
+   heatmap e aderencia passam a ser dela), enquanto a lente recorta so a
+   listagem — encolher os totais junto seria mentir sobre o volume. */
+const commitFilters = { author: "", onlyOff: false };
+
