@@ -352,3 +352,53 @@ function renderCommitStats(t) {
  *  olho, nao para dar nota. */
 const convColor = (pct) => pct >= 80 ? "var(--pos)" : pct < 50 ? "var(--neg)" : "var(--warn)";
 
+function renderConvention(d) {
+  if (!d) {
+    $("c-conv-sub").textContent = "Nao foi possivel calcular a aderencia.";
+    return;
+  }
+  const t = d.totals;
+  $("c-conv-sub").innerHTML = `Regra: <code>${esc(d.rule)}</code>.`
+    + ` Tipos aceitos: ${d.types.map((x) => `<code>${esc(x)}</code>`).join(", ")}.`
+    + ` Merge commits ficam de fora — a mensagem e gerada pelo GitLab.`
+    + outsidersNote(d.outsiders);
+
+  const piores = Object.entries(d.by_reason).slice(0, 2)
+    .map(([k, v]) => `${esc(d.reason_labels[k] || k)} (${v})`).join(" · ");
+  $("c-conv-stats").innerHTML = [
+    { label: "Aderencia do time", value: `${t.pct}%`, note: `${t.ok} de ${t.commits} commits`,
+      color: convColor(t.pct) },
+    { label: "Fora do padrao", value: String(t.off), note: piores || "—" },
+    { label: "Pessoas", value: String(d.authors.length),
+      note: `${d.authors.filter((a) => a.pct >= 80).length} acima de 80%` },
+  ].map((c) => `<div class="stat">
+      <div class="stat-label">${esc(c.label)}</div>
+      <div class="stat-row"><div class="stat-value"${c.color ? ` style="color:${c.color}"` : ""}>${esc(c.value)}</div></div>
+      <div class="delta"><span>${esc(c.note)}</span></div>
+    </div>`).join("");
+
+  $("c-conv").innerHTML =
+    `<thead><tr><th>Pessoa</th><th class="num">Aderencia</th><th class="num">Ok</th>
+      <th>O que quebra</th><th class="col-extra">Exemplo</th></tr></thead><tbody>`
+    + (d.authors.length ? d.authors.map((a) => {
+        const nome = a.member || a.author;
+        const ex = a.offenders[0];
+        return `<tr>
+        <td><span class="row-name">
+          <span class="avatar" style="width:24px;height:24px;font-size:10px">${esc(initials(nome))}</span>
+          <span title="${esc(a.author)}">${esc(nome)}</span>
+          ${a.member ? "" : `<span class="tag-plain">fora do time</span>`}
+        </span></td>
+        <td class="num"><b style="color:${convColor(a.pct)}">${a.pct}%</b>
+          <div class="mini-bar"><i style="width:${a.pct}%;background:${convColor(a.pct)}"></i></div></td>
+        <td class="num muted">${a.ok}/${a.commits}</td>
+        <td>${Object.entries(a.reasons).map(([k, v]) =>
+            `<span class="tag-plain">${esc(d.reason_labels[k] || k)} ${v}</span>`).join(" ")
+            || `<span class="muted">—</span>`}</td>
+        <td class="col-extra muted">${ex
+          ? `<code class="commit-msg" title="${esc(ex.reasons.map((r) => d.reason_labels[r] || r).join(", "))}">${esc(ex.title)}</code>`
+          : "—"}</td>
+      </tr>`; }).join("")
+      : `<tr><td colspan="5" class="muted">Sem commits no periodo.</td></tr>`)
+    + `</tbody>`;
+}
