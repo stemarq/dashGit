@@ -418,3 +418,21 @@ def test_perfil_de_quem_executou_nao_leva_a_revisao():
     assert approx(issue1["focus_hours"], 10)
 
 
+def test_coluna_de_fila_nao_entra_no_tempo_de_ninguem(monkeypatch):
+    """Espera nao e trabalho: o card parado na fila nao vira metrica de pessoa,
+    mas continua contando na analise de gargalo."""
+    seed()
+    monkeypatch.setattr(metrics, "queue_labels", lambda: {"review"})
+    escopo_amplo(monkeypatch)
+
+    report = metrics.contributor_report(1)
+    por_pessoa = {c["contributor"]: c for c in report["contributors"]}
+    assert "Review" not in report["totals"]
+    assert "Review" not in por_pessoa["Bruno"]["by_label"]
+    assert approx(por_pessoa["Bruno"]["total_hours"], 2)   # so o Doing da issue 3
+
+    # o gargalo continua enxergando a fila
+    colunas = {c["label"]: c for c in metrics.column_report(1)["columns"]}
+    assert approx(colunas["Review"]["avg_hours"], 5)
+
+
