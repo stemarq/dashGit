@@ -4,3 +4,14 @@
 
 /* ── navegacao entre telas ────────────────────────────────────────────── */
 
+const VIEWS = {
+  overview: {
+    title: "Visao geral do fluxo",
+    node: "view-overview",
+  },
+  contributors: { title: "Contribuidores", node: "view-contributors" },
+};
+
+// itens sem tela propria levam ao card correspondente na visao geral
+const ANCHORS = { issues: "issues-table", columns: "cols-table" };
+
