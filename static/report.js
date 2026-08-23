@@ -285,3 +285,19 @@ function renderSummaryPeople(d) {
     + `</tbody>`;
 }
 
+function renderSummaryColumns(d) {
+  $("s-columns").innerHTML =
+    `<thead><tr><th>Coluna</th><th class="num">Media</th><th class="num">Mediana</th>
+      <th class="num">Maximo</th><th class="num">Passagens</th><th class="num">Agora</th></tr></thead><tbody>`
+    + (d.columns.length ? d.columns.map((c) => `<tr>
+        <td><span class="tag-pill"><i class="swatch round" style="background:${colorOf(c.label)}"></i>${esc(c.label)}</span></td>
+        <td class="num">${esc(c.avg_human)}</td>
+        <td class="num">${esc(fmtH(c.median_hours))}</td>
+        <td class="num">${esc(fmtH(c.max_hours))}</td>
+        <td class="num muted">${c.completed_passes}</td>
+        <td class="num muted">${c.wip}</td>
+      </tr>`).join("")
+      : `<tr><td colspan="6" class="muted">Sem passagens nesta sprint.</td></tr>`)
+    + `</tbody>`;
+}
+
