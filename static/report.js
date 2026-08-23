@@ -207,3 +207,45 @@ $("r-export").addEventListener("click", () => {
 
 /* ── resumo de uma sprint ─────────────────────────────────────────────── */
 
+function renderSummary(d) {
+  const m = d.milestone;
+  const focus = d.focus_label;
+  const c = d.commits;
+
+  $("s-title").textContent = m.milestone;
+  $("s-sub").innerHTML = `${esc(m.start_date || m.due_date
+      ? fmtRange(m.start_date, m.due_date)
+      : m.state === "closed" ? "sprint encerrada" : "sprint em andamento")}`
+    + (d.compared_to
+        ? ` · variacao contra <b>${esc(d.compared_to)}</b>`
+        : ` · primeira sprint com dados, nao ha com o que comparar`)
+    + `. Taxas comparam em pontos percentuais (pp).`;
+
+  $("s-stats").innerHTML = [
+    { label: "Issues fechadas", value: `${m.closed_issues}/${m.issues}`,
+      note: `${m.completion}% da sprint`, d: delta(d.delta.completion_pp, { unit: "pp" }) },
+    { label: focus ? `Tempo em ${focus}` : "Tempo de trabalho",
+      value: focus ? (m.by_label[focus]?.human || "0m") : m.total_human,
+      note: `${m.contributors} pessoas no fluxo`, d: delta(d.delta.focus_hours) },
+    { label: "Lead time medio", value: fmtH(m.avg_lead_hours),
+      note: "da criacao ao fechamento", d: delta(d.delta.avg_lead_hours, { lower: true }) },
+    { label: "Commits", value: String(c.total),
+      note: `${c.off} fora da convencao`, d: delta(d.delta.commits) },
+    { label: "Convencao", value: c.pct === null ? "—" : `${c.pct}%`,
+      note: `${c.ok} de ${c.total} commits`, d: delta(d.delta.convention_pp, { unit: "pp" }) },
+  ].map((s) => `<div class="stat">
+      <div class="stat-label">${esc(s.label)}</div>
+      <div class="stat-row"><div class="stat-value">${esc(s.value)}</div></div>
+      <div class="delta"><span>${esc(s.note)}</span></div>
+      ${s.d}
+    </div>`).join("");
+
+  renderSummaryPeople(d);
+  renderSummaryColumns(d);
+  renderSummaryIssues(d);
+  renderSummaryCommits(d);
+}
+
+/** Mesma faixa de cor da tela de commits: verde >= 80%, vermelho < 50%. */
+const convRate = (pct) => pct >= 80 ? "var(--pos)" : pct < 50 ? "var(--neg)" : "var(--warn)";
+
