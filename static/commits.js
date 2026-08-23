@@ -305,3 +305,12 @@ $("c-only-off").addEventListener("click", () => {
   loadCommits();
 });
 
+/** A frase que declara quem ficou de fora das contas. Excluir calado seria
+ *  pior que incluir: quem le tem de saber o que nao entrou. */
+function outsidersNote(nota) {
+  if (!nota || !nota.commits) return "";
+  const quem = nota.authors.map((a) => `${esc(a.author)} (${a.commits})`).join(", ");
+  return ` <b>${nota.commits} commits</b> de quem nao e do time ficam fora de todas`
+    + ` as contas desta tela — ${quem}.`;
+}
+
