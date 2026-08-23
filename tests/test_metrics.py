@@ -142,3 +142,19 @@ def test_column_report_ordena_pelo_board():
     assert approx(doing["avg_hours"], 6)   # (10h + 2h) / 2
 
 
+def test_issue_report_traz_coluna_atual():
+    seed()
+    report = metrics.issue_report(1)
+    issues = {i["iid"]: i for i in report["issues"]}
+    assert issues[2]["current_column"] == "Doing"
+    assert issues[1]["current_column"] is None
+    assert approx(issues[1]["lead_time_hours"], 20)
+
+
+def test_resolve_project_por_path_e_id():
+    seed()
+    assert metrics.resolve_project_id("g/p") == 1
+    assert metrics.resolve_project_id(1) == 1
+    assert metrics.resolve_project_id("nao/existe") is None
+
+
