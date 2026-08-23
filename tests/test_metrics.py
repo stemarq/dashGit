@@ -247,3 +247,24 @@ def test_pedir_a_coluna_excluida_explicitamente_ganha():
     assert approx(ana["by_label"]["Backlog"]["hours"], 50)
 
 
+def test_issues_ranqueadas_por_tempo_em_doing():
+    seed()
+    with session() as conn:
+        # issue 3 fica 300h paradas no Backlog: lead time enorme, trabalho zero
+        conn.execute(
+            "UPDATE issues SET created_at = ? WHERE project_id = 1 AND iid = 3",
+            (iso(-300),),
+        )
+    report = metrics.issue_report(1)
+    assert report["focus_label"] == "Doing"
+    assert report["sorted_by"] == "focus_hours"
+
+    ordem = [i["iid"] for i in report["issues"]]
+    assert ordem[0] == 1                     # 10h em Doing, a que mais trabalhou
+    assert ordem.index(2) < ordem.index(3)   # 4h em Doing vence 2h em Doing
+
+    por_lead = metrics.issue_report(1, sort="lead_time")
+    assert por_lead["issues"][0]["iid"] == 3  # lead time coroaria a issue parada
+    assert por_lead["sorted_by"] == "lead_time_hours"
+
+
