@@ -114,3 +114,42 @@ function renderCommitAuthors(autores) {
 
 /* ── heatmap dia x hora ───────────────────────────────────────────────── */
 
+function renderHeatmap(heat) {
+  const host = $("c-heat");
+  const counts = heat.counts;
+  const max = Math.max(1, ...counts.flat());
+
+  // rampa sequencial: um matiz so, claro -> escuro (nunca arco-iris)
+  const cor = (n) => n === 0 ? "var(--surface-3)"
+    : `color-mix(in srgb, ${cssVar("--s1")} ${12 + (n / max) * 88}%, var(--surface-3))`;
+
+  const horas = [0, 3, 6, 9, 12, 15, 18, 21];
+  host.innerHTML = `
+    <div class="heat">
+      <div class="heat-corner"></div>
+      ${Array.from({ length: 24 }, (_, h) =>
+        `<div class="heat-hour">${horas.includes(h) ? h : ""}</div>`).join("")}
+      ${counts.map((linha, d) => `
+        <div class="heat-day">${esc(heat.weekdays[d])}</div>
+        ${linha.map((n, h) => `<i class="heat-cell" style="background:${cor(n)}"
+            data-t="${esc(heat.weekdays[d])} ${String(h).padStart(2, "0")}h"
+            data-n="${n}"></i>`).join("")}
+      `).join("")}
+    </div>
+    <div class="heat-legend">
+      <span>menos</span>
+      ${[0, .25, .5, .75, 1].map((f) =>
+        `<i style="background:${cor(f * max)}"></i>`).join("")}
+      <span>mais</span>
+    </div>`;
+
+  host.querySelectorAll(".heat-cell").forEach((cell) => {
+    cell.addEventListener("mousemove", (ev) => tip.show(tipRows(cell.dataset.t, [
+      { color: cssVar("--s1"), label: "Commits", value: cell.dataset.n },
+    ]), ev.clientX, ev.clientY));
+    cell.addEventListener("mouseleave", tip.hide);
+  });
+}
+
+/* ── identidades divergentes ──────────────────────────────────────────── */
+
