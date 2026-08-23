@@ -350,3 +350,17 @@ function renderSummaryCommits(d) {
     + `</tbody>`;
 }
 
+$("s-pdf").addEventListener("click", () => {
+  const aba = window.open(
+    `/api/report/sprint.html?${reportParams({ milestone: $("milestone").value, print: "1" })}`,
+    "_blank");
+  toast(aba
+    ? "Resumo aberto numa aba: escolha 'Salvar como PDF' no destino."
+    : "O navegador bloqueou a aba. Libere o popup deste site e tente de novo.", 5000);
+});
+
+$("s-export").addEventListener("click", () => {
+  window.location.href =
+    `/api/report/sprint.html?${reportParams({ milestone: $("milestone").value })}`;
+  toast("Gerando o resumo para download...");
+});
