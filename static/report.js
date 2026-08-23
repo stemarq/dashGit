@@ -63,3 +63,13 @@ for (const id of ["r-scope", "s-scope"]) {
   });
 }
 
+async function loadComparison() {
+  try {
+    const data = await api("/report/sprints", reportParams());
+    state.report = data;
+    renderReport(data);
+  } catch (e) {
+    $("r-sub").textContent = `Nao foi possivel montar o relatorio: ${e.message}`;
+  }
+}
+
