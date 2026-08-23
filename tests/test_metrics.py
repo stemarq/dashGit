@@ -334,3 +334,18 @@ def test_projeto_sem_board_conta_todas_as_labels():
     assert "DOCUMENTATION" in ana["by_label"]
 
 
+def test_contributor_detail_monta_o_perfil():
+    seed()
+    perfil = metrics.contributor_detail(1, "Ana")
+    assert perfil["issues_count"] == 2 and perfil["closed_issues"] == 1
+    assert perfil["focus_label"] == "Doing"
+    assert approx(perfil["by_label"]["Doing"]["hours"], 14)
+    assert "Review" not in perfil["by_label"]        # a revisao foi do Bruno
+    assert perfil["wip"] == 1                        # a issue 2 segue em Doing
+    assert perfil["columns"] == ["Doing"]
+
+    # as issues vem ranqueadas pelo tempo na coluna de trabalho
+    assert [i["iid"] for i in perfil["issues"]] == [1, 2]
+    assert approx(perfil["issues"][0]["focus_hours"], 10)
+
+
