@@ -175,3 +175,14 @@ def test_filtro_sem_sprint_pega_issues_orfas(monkeypatch):
     assert approx(report["contributors"][0]["by_label"]["Doing"]["hours"], 2)
 
 
+def test_lista_de_milestones_inclui_orfas_e_contagem():
+    seed()
+    rows = {m["title"]: m for m in metrics.milestones(1)}
+    assert rows["Sprint 1"]["issues"] == 1
+    assert rows["Sprint 2"]["state"] == "active"
+    assert rows["Sprint 2"]["due_date"] == "2026-01-28"
+    assert rows[metrics.NO_MILESTONE]["issues"] == 1     # issue 3
+    # a pseudo-sprint fica sempre no fim da lista
+    assert list(rows)[-1] == metrics.NO_MILESTONE
+
+
