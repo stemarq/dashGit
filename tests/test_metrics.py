@@ -359,3 +359,13 @@ def test_contributor_detail_agrupa_por_sprint():
     assert [s["milestone"] for s in perfil["by_milestone"]] == ["Sprint 2", "Sprint 1"]
 
 
+def test_contributor_detail_respeita_janela_mas_mantem_a_issue():
+    seed()
+    perfil = metrics.contributor_detail(1, "Ana", since=NOW - timedelta(hours=5))
+    # so as 4h recentes entram na soma...
+    assert approx(perfil["by_label"]["Doing"]["hours"], 4)
+    # ...mas a issue antiga continua listada, com o historico completo
+    assert perfil["issues_count"] == 2
+    assert approx(next(i for i in perfil["issues"] if i["iid"] == 1)["focus_hours"], 10)
+
+
