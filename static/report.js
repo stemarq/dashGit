@@ -301,3 +301,30 @@ function renderSummaryColumns(d) {
     + `</tbody>`;
 }
 
+function renderSummaryIssues(d) {
+  const focus = d.focus_label;
+  $("s-issues-sub").innerHTML = `As ${d.issues.length} mais longas de`
+    + ` ${d.issues_total} issues com tempo registrado, ranqueadas pelo tempo em`
+    + ` <b>${esc(focus || "coluna de trabalho")}</b>.`;
+
+  const max = Math.max(1, ...d.issues.map((i) => i.focus_hours));
+  $("s-issues").innerHTML =
+    `<thead><tr><th>#</th><th>Issue</th><th>Responsavel</th><th>Coluna</th>
+      <th class="num">${esc(focus ? `Tempo em ${focus}` : "Trabalho")}</th>
+      <th class="num">Lead time</th></tr></thead><tbody>`
+    + (d.issues.length ? d.issues.map((i) => `<tr>
+        <td class="muted">${i.iid}</td>
+        <td class="title-cell">
+          <a href="${esc(i.web_url)}" target="_blank" rel="noreferrer">${esc(i.title)}</a></td>
+        <td class="muted">${esc(i.assignee)}</td>
+        <td>${i.current_column
+          ? `<span class="tag-pill"><i class="swatch round" style="background:${colorOf(i.current_column)}"></i>${esc(i.current_column)}</span>`
+          : `<span class="muted">fechada</span>`}</td>
+        <td class="num"><b>${esc(fmtH(i.focus_hours))}</b>
+          <div class="mini-bar"><i style="width:${(i.focus_hours / max) * 100}%;background:${colorOf(focus)}"></i></div></td>
+        <td class="num muted">${esc(fmtH(i.lead_time_hours))}</td>
+      </tr>`).join("")
+      : `<tr><td colspan="6" class="muted">Sem issues com tempo nesta sprint.</td></tr>`)
+    + `</tbody>`;
+}
+
