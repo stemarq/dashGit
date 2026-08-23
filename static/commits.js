@@ -85,3 +85,32 @@ function renderDailyCommits(daily, gran) {
 
 /* ── ranking de autores ───────────────────────────────────────────────── */
 
+function renderCommitAuthors(autores) {
+  const host = $("c-authors");
+  if (!autores.length) {
+    host.innerHTML = `<div class="empty">Sem commits no periodo.</div>`;
+    return;
+  }
+  const max = Math.max(...autores.map((a) => a.commits));
+  host.innerHTML = autores.map((a) => `<div class="row-item">
+      <div class="row-name">
+        <span class="avatar">${esc(initials(a.author))}</span>
+        <span title="${esc(a.author)}${a.email ? ` · ${esc(a.email)}` : ""}">${esc(a.author)}</span>
+      </div>
+      <div>
+        <div class="progress" style="margin-top:0">
+          <i style="width:${(a.commits / max) * 100}%;background:${cssVar("--s1")}"></i>
+        </div>
+        <div class="sprint-when">
+          <span class="pos">+${fmtInt(a.additions)}</span>
+          <span class="neg">-${fmtInt(a.deletions)}</span>
+          · ${a.active_days} ${a.active_days === 1 ? "dia" : "dias"}
+          · ${a.avg_size} linhas/commit
+        </div>
+      </div>
+      <div class="row-total">${a.commits}</div>
+    </div>`).join("");
+}
+
+/* ── heatmap dia x hora ───────────────────────────────────────────────── */
+
