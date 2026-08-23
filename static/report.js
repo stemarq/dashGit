@@ -83,3 +83,48 @@ async function loadSprintSummary(sprint) {
   }
 }
 
+function renderReport(d) {
+  const focus = d.focus_label;
+  const sprints = d.sprints;
+
+  $("r-sub").innerHTML = sprints.length
+    ? `${sprints.length} sprints, da mais recente para a mais antiga. Cada uma e medida`
+      + ` pela sua duracao inteira — o filtro de periodo do topo nao se aplica aqui.`
+      + (d.orphan_commits
+          ? ` ${d.orphan_commits} commits nao citam issue e por isso nao entram em`
+            + ` sprint nenhuma.`
+          : "")
+      + outsidersNote(d.outsiders)
+    : "Nenhuma sprint no cache.";
+
+  $("r-table").innerHTML =
+    `<thead><tr><th>Sprint</th><th class="num">Fechadas</th>
+      <th class="num">${esc(focus ? `Tempo em ${focus}` : "Tempo de trabalho")}</th>
+      <th class="num">Acumulado</th><th class="num">Lead time</th>
+      <th class="num">Commits</th><th class="num">Convencao</th></tr></thead><tbody>`
+    + (sprints.length ? sprints.map((s) => `<tr>
+        <td>
+          <div class="row-name"><b>${esc(s.milestone)}</b></div>
+          <div class="sprint-when">${esc(s.start_date || s.due_date
+              ? fmtRange(s.start_date, s.due_date)
+              : s.state === "closed" ? "encerrada" : "em andamento")}${
+            s.compared_to ? ` · vs ${esc(s.compared_to)}` : ""}</div>
+        </td>
+        <td class="num"><b>${s.closed_issues}/${s.issues}</b>
+          ${delta(s.delta.completion_pp, { unit: "pp" })}</td>
+        <td class="num">${esc(focus ? (s.by_label[focus]?.human || "0m") : fmtH(s.focus_hours))}${
+          delta(s.delta.focus_hours)}</td>
+        <td class="num">${esc(s.total_human)}${delta(s.delta.total_hours)}</td>
+        <td class="num">${esc(fmtH(s.avg_lead_hours))}
+          ${delta(s.delta.avg_lead_hours, { lower: true })}</td>
+        <td class="num">${s.commits}${delta(s.delta.commits)}</td>
+        <td class="num">${s.convention_pct === null ? "—" : `<b>${s.convention_pct}%</b>`}
+          ${delta(s.delta.convention_pp, { unit: "pp" })}</td>
+      </tr>`).join("")
+      : `<tr><td colspan="7" class="muted">Sem sprints no cache.</td></tr>`)
+    + `</tbody>`;
+
+  renderReportColumns(d);
+  renderReportPeople(d);
+}
+
