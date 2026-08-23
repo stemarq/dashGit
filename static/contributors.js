@@ -176,3 +176,64 @@ async function openProfile(name) {
   }
 }
 
+function renderProfile(d) {
+  const focus = d.focus_label;
+  $("p-avatar").textContent = initials(d.contributor);
+  $("p-name").textContent = d.contributor;
+  $("p-meta").textContent =
+    `${d.issues_count} issues · ${d.closed_issues} fechadas · ${d.open_issues} abertas`
+    + ($("milestone").value ? ` · recorte de ${$("milestone").value}` : "");
+
+  const focusBucket = focus ? d.by_label[focus] : null;
+  $("p-stats").innerHTML = [
+    {
+      label: `Tempo em ${focus || "coluna de trabalho"}`,
+      value: focusBucket?.human || "0h",
+      note: `${focusBucket?.issues || 0} issues passaram por la`,
+    },
+    ...(d.review_label ? [{
+      label: `Tempo revisando`,
+      value: d.review_human,
+      note: d.review_issues
+        ? `${d.review_issues} ${d.review_issues === 1 ? "card revisado" : "cards revisados"}`
+          + ` em ${esc(d.review_label)}`
+        : "nao revisou nada no recorte",
+      review: true,
+    }] : []),
+    { label: "Lead time medio", value: fmtH(d.avg_lead_hours), note: "da criacao ao fechamento" },
+    {
+      label: "Cards em coluna agora",
+      value: String(d.wip),
+      note: d.wip ? "frentes abertas ao mesmo tempo" : "nada em aberto",
+    },
+    ...(state.queues.length ? [{
+      label: "Espera causada",
+      value: d.waiting_human,
+      note: `${d.waiting_issues} cards pararam na fila esperando por ela`,
+      debt: true,
+    }] : []),
+  ].map((c) => `<div class="stat${c.debt ? " debt" : ""}${c.review ? " review" : ""}">
+      <div class="stat-label">${esc(c.label)}</div>
+      <div class="stat-row"><div class="stat-value">${esc(c.value)}</div></div>
+      <div class="delta"><span>${esc(c.note)}</span></div>
+    </div>`).join("");
+
+  // sprint escolhida ja delimita o periodo, como na visao geral
+  const days = $("days").value && !$("milestone").value ? Number($("days").value) : null;
+  renderArea(dailySeries(d.issues, d.columns.length ? d.columns : null, days),
+             d.columns, "p-area");
+
+  renderDonut(Object.fromEntries(Object.entries(d.by_label)
+    .map(([label, v]) => [label, { hours: v.hours, human: v.human }])), "p-donut");
+  // a revisao de card alheio nao entra em by_label quando o escopo e assigned:
+  // sem essa nota a rosca parece contradizer o stat de "Tempo revisando"
+  $("p-donut-sub").innerHTML = "Distribuicao entre as colunas"
+    + (d.review_label && d.review_hours && !d.by_label[d.review_label]
+        ? ` — as <b>${esc(d.review_human)}</b> em ${esc(d.review_label)} ficam de fora:`
+          + ` sao cards de outras pessoas.`
+        : "");
+
+  renderProfileSprints(d);
+  renderProfileIssues(d);
+}
+
