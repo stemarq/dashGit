@@ -119,3 +119,40 @@ function renderPeople() {
   renderLoad(people, cols);
 }
 
+/** Carga = cards que a pessoa tem parados numa coluna agora. Nao e tempo:
+ *  e quantas frentes ela esta segurando ao mesmo tempo. */
+function renderLoad(people, cols) {
+  const load = people
+    .map((c) => ({ name: c.contributor, wip: wipOf(c, cols) }))
+    .filter((p) => p.wip > 0)
+    .sort((a, b) => b.wip - a.wip);
+
+  const sprint = $("milestone").value;
+  $("load-sub").textContent = sprint
+    ? `Cards de ${sprint} que continuam numa coluna. Sprint encerrada normalmente`
+      + " nao tem nenhum."
+    : "Issues em coluna agora. Barra cheia = quem esta com mais coisa aberta ao mesmo tempo.";
+
+  if (!load.length) {
+    $("load").innerHTML = `<div class="empty">${sprint
+      ? `Nenhum card de ${esc(sprint)} continua em coluna.`
+      : "Nenhum card em coluna neste momento."}</div>`;
+    return;
+  }
+  const max = Math.max(...load.map((p) => p.wip));
+  $("load").innerHTML = load.map((p) => `<div class="load-row">
+      <div>
+        <div class="row-name">
+          <span class="avatar">${esc(initials(p.name))}</span>
+          <span title="${esc(p.name)}">${esc(p.name)}</span>
+        </div>
+        <div class="progress">
+          <i style="width:${(p.wip / max) * 100}%;background:${colorOf(state.focus)}"></i>
+        </div>
+      </div>
+      <div class="row-total">${p.wip}</div>
+    </div>`).join("");
+}
+
+/* ── perfil ───────────────────────────────────────────────────────────── */
+
