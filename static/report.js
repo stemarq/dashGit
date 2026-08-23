@@ -37,3 +37,21 @@ async function loadReport() {
 /* O relatorio e escolhido pelo filtro de sprint do topo, que fica longe e nao
    se parece com um seletor de relatorio. Este picker no cabecalho do card e o
    mesmo filtro, escrito na linguagem da tela. */
+function renderScopePicker(sprint) {
+  // sprint sem issue nao tem resumo para gerar, e `(sem sprint)` e um balde
+  const sprints = (state.milestones || [])
+    .filter((m) => m.issues > 0 && m.title !== "(sem sprint)")
+    .map((m) => m.title);
+  const opcoes = `<option value="">Comparativo entre sprints</option>`
+    + sprints.map((nome) =>
+        `<option value="${esc(nome)}">Resumo de ${esc(nome)}</option>`).join("");
+  for (const id of ["r-scope", "s-scope"]) {
+    const el = $(id);
+    if (el.dataset.filled !== sprints.join("|")) {
+      el.innerHTML = opcoes;
+      el.dataset.filled = sprints.join("|");
+    }
+    el.value = sprint;
+  }
+}
+
