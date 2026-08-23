@@ -35,3 +35,21 @@ function showView(name) {
   if (name === "report") loadReport();
 }
 
+document.querySelectorAll(".nav-item[data-view]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const target = btn.dataset.view;
+    if (VIEWS[target]) return showView(target);
+    if (target === "sync") return $("sync").click();
+    const anchor = ANCHORS[target];
+    if (!anchor) return;
+    showView("overview");
+    $(anchor).closest(".card").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+});
+
+/* ── grade de pessoas ─────────────────────────────────────────────────── */
+
+function wipOf(person, columns) {
+  return columns.reduce((a, col) => a + (person.by_label[col]?.still_in_column || 0), 0);
+}
+
