@@ -436,3 +436,19 @@ def test_coluna_de_fila_nao_entra_no_tempo_de_ninguem(monkeypatch):
     assert approx(colunas["Review"]["avg_hours"], 5)
 
 
+def test_fila_some_do_perfil_mas_a_issue_permanece(monkeypatch):
+    seed()
+    monkeypatch.setattr(metrics, "queue_labels", lambda: {"review"})
+    escopo_amplo(monkeypatch)
+    perfil = metrics.contributor_detail(1, "Bruno")
+    assert "Review" not in perfil["by_label"]
+    # o Bruno so revisou a issue 1, entao ela sai do perfil dele; a 3 fica
+    assert {i["iid"] for i in perfil["issues"]} == {3}
+
+
+def _com_fila(monkeypatch):
+    """Deixa 'Review' como fila para exercitar o debito de espera."""
+    monkeypatch.setattr(metrics, "queue_labels", lambda: {"review"})
+    escopo_amplo(monkeypatch)
+
+
