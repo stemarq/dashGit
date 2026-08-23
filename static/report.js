@@ -26,3 +26,14 @@ function delta(value, { unit = "%", lower = false } = {}) {
 /* O filtro de sprint do topo escolhe o relatorio: sem sprint, o comparativo
    ("estamos melhorando?"); com uma sprint, o resumo dela ("o que aconteceu
    nesta sprint?"). Sao perguntas diferentes, nao dois recortes da mesma. */
+async function loadReport() {
+  const sprint = $("milestone").value;
+  $("r-compare").hidden = !!sprint;
+  $("r-summary").hidden = !sprint;
+  renderScopePicker(sprint);
+  return sprint ? loadSprintSummary(sprint) : loadComparison();
+}
+
+/* O relatorio e escolhido pelo filtro de sprint do topo, que fica longe e nao
+   se parece com um seletor de relatorio. Este picker no cabecalho do card e o
+   mesmo filtro, escrito na linguagem da tela. */
