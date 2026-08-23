@@ -237,3 +237,28 @@ function renderProfile(d) {
   renderProfileIssues(d);
 }
 
+function renderProfileSprints(d) {
+  if (!d.by_milestone.length) {
+    $("p-sprints").innerHTML = `<div class="empty">Sem sprints neste recorte.</div>`;
+    return;
+  }
+  const max = Math.max(...d.by_milestone.map((s) => s.hours)) || 1;
+  $("p-sprints").innerHTML = d.by_milestone.map((s) => `<div class="sprint static">
+      <div><div class="sprint-name"><span class="dot-state"></span><b>${esc(s.milestone)}</b></div></div>
+      <div>
+        <div class="stack" style="width:${Math.max((s.hours / max) * 100, 4)}%">
+          <i style="flex:1;background:${colorOf(state.focus)}"></i>
+        </div>
+        <div class="sprint-when">${esc(s.human)} acumuladas</div>
+      </div>
+      <div>
+        <div class="progress-label"><b>${s.completion}%</b>
+          <span>${s.closed_issues}/${s.issues} fechadas</span></div>
+        <div class="progress"><i style="width:${Math.min(s.completion, 100)}%"></i></div>
+      </div>
+      <div class="row-total">${s.issues}
+        <div class="sprint-when" style="text-align:right">issues</div>
+      </div>
+    </div>`).join("");
+}
+
