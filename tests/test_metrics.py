@@ -500,3 +500,17 @@ def test_fila_sem_dono_quando_nao_da_para_saber(monkeypatch):
     assert approx(orfa["waiting_hours"], 8)
 
 
+def test_perfil_traz_a_espera_causada(monkeypatch):
+    seed()
+    with session() as conn:
+        conn.execute(
+            "INSERT INTO label_events VALUES (24,1,1,'add','Doing',3,'Bruno',?)", (iso(-15),)
+        )
+    _com_fila(monkeypatch)
+    perfil = metrics.contributor_detail(1, "Bruno")
+    assert approx(perfil["waiting_hours"], 5)
+    assert perfil["waiting_issues"] == 1
+    issue1 = next(i for i in perfil["issues"] if i["iid"] == 1)
+    assert approx(issue1["waiting_hours"], 5)
+
+
