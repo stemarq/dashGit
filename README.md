@@ -102,3 +102,28 @@ curl "http://localhost:8000/api/metrics/contributors?labels=Doing&milestone=Spri
 curl "http://localhost:8000/api/metrics/columns"
 ```
 
+## O que conta como tempo de trabalho
+
+Duas configurações no `.env` mandam nisso:
+
+```bash
+EXCLUDED_LABELS=Backlog   # colunas de planejamento, fora de toda conta
+FOCUS_LABEL=Doing         # a coluna que representa trabalho acontecendo
+```
+
+**`EXCLUDED_LABELS`** remove a coluna de tudo: séries do gráfico, totais por
+pessoa, treemap, gargalo, WIP e slots de cor. Pedir a coluna explicitamente
+(`?labels=Backlog`) ainda funciona — a exclusão vale como padrão, não como
+censura.
+
+**`FOCUS_LABEL`** define o que é uma issue "demorada". A tabela de issues é
+ordenada por tempo nessa coluna, não por lead time: uma issue criada há três
+meses e trabalhada em dois dias tem lead time enorme e trabalho pequeno — pelo
+lead time ela lideraria a lista sem merecer. O lead time continua visível como
+coluna secundária, e `?sort=lead_time` volta ao ranking antigo se você quiser
+os dois olhares.
+
+Deixando `FOCUS_LABEL` vazio, o dash detecta sozinho (procura `Doing`,
+`Em andamento`, `In progress`, `WIP`…); sem achar, usa a primeira coluna não
+excluída do board.
+
