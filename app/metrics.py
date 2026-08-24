@@ -12,7 +12,7 @@ O campo `moved_by` mostra quem de fato moveu o card, para conferencia.
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, time, timedelta, timezone
 from typing import Any, Iterable
 
 from app.config import get_settings
@@ -204,6 +204,48 @@ def review_intervals(
             if i.label == label and interval_owner(i, timeline) == name]
 
 
+def skip_weekends() -> bool:
+    return get_settings().skip_weekends
+
+
+def _weekend_seconds(start: datetime, end: datetime) -> float:
+    """Quanto do intervalo caiu em sabado ou domingo, no fuso local.
+
+    O fim de semana e avaliado na hora local porque e ela que diz quando o
+    time nao estava trabalhando — em UTC, a sexta-feira brasileira vira
+    sabado as 21h.
+    """
+    inicio, fim = start.astimezone(), end.astimezone()
+    dia = inicio.date()
+    # comeca no sabado da semana do inicio, mesmo que ele fique para tras:
+    # o max() abaixo corta o que sobra
+    sabado = datetime.combine(
+        dia - timedelta(days=(dia.weekday() - 5) % 7), time.min, tzinfo=inicio.tzinfo
+    )
+    total = 0.0
+    while sabado < fim:
+        segunda = sabado + timedelta(days=2)
+        sobreposicao = min(fim, segunda) - max(inicio, sabado)
+        if sobreposicao.total_seconds() > 0:
+            total += sobreposicao.total_seconds()
+        sabado += timedelta(days=7)
+    return total
+
+
+def elapsed(start: datetime | None, end: datetime | None) -> float:
+    """Segundos uteis entre dois instantes — a unica conta de tempo do dash.
+
+    Tudo passa por aqui (coluna, fila, lead time) para que ligar ou desligar
+    o fim de semana mude todos os numeros de uma vez, e nao metade deles.
+    """
+    if start is None or end is None or end <= start:
+        return 0.0
+    bruto = (end - start).total_seconds()
+    if not skip_weekends():
+        return bruto
+    return max(0.0, bruto - _weekend_seconds(start, end))
+
+
 def parse_ts(value: str | None) -> datetime | None:
     if not value:
         return None
@@ -227,7 +269,7 @@ class Interval:
         return self.end is not None
 
     def seconds(self, now: datetime) -> float:
-        return max(0.0, ((self.end or now) - self.start).total_seconds())
+        return elapsed(self.start, self.end or now)
 
 
 @dataclass
@@ -569,7 +611,7 @@ def contributor_report(
             if end <= start:
                 continue
             person = per_person.setdefault(debtor, blank(debtor))
-            person["waiting_seconds"] += (end - start).total_seconds()
+            person["waiting_seconds"] += elapsed(start, end)
             person["waiting_issues"].add(tl.iid)
 
         for itv in tl.intervals:
@@ -579,7 +621,7 @@ def contributor_report(
             end = min(itv.end or now, until)
             if end <= start:
                 continue
-            seconds = (end - start).total_seconds()
+            seconds = elapsed(start, end)
 
             # cada etapa vai para quem a fez, nao para o dono da issue
             # o total por coluna e do projeto e nao depende do escopo
@@ -735,7 +777,7 @@ def issue_report(
         by_label: dict[str, float] = defaultdict(float)
         for itv in tl.intervals:
             by_label[itv.label] += itv.seconds(now)
-        lead = ((tl.closed_at or now) - tl.created_at).total_seconds() if tl.created_at else 0.0
+        lead = elapsed(tl.created_at, tl.closed_at or now)
         focus_seconds = by_label.get(focus, 0.0) if focus else 0.0
         out.append(
             {
@@ -858,7 +900,7 @@ def milestone_report(
             if owner != UNASSIGNED:
                 bucket["contributors"].add(owner)
         if tl.created_at:
-            bucket["lead_seconds"].append(((tl.closed_at or now) - tl.created_at).total_seconds())
+            bucket["lead_seconds"].append(elapsed(tl.created_at, tl.closed_at or now))
         for itv in tl.intervals:
             seconds = itv.seconds(now)
             bucket["by_label"][itv.label] += seconds
@@ -967,7 +1009,7 @@ def contributor_detail(
             end = min(itv.end or now, until)
             if end <= start:
                 continue
-            seconds = (end - start).total_seconds()
+            seconds = elapsed(start, end)
             bucket = by_label[itv.label]
             bucket["seconds"] += seconds
             bucket["issues"].add(tl.iid)
@@ -991,7 +1033,7 @@ def contributor_detail(
         if current:
             wip += 1
         if tl.created_at:
-            leads.append(((tl.closed_at or now) - tl.created_at).total_seconds())
+            leads.append(elapsed(tl.created_at, tl.closed_at or now))
 
         issues.append({
             "iid": tl.iid,
@@ -1003,9 +1045,7 @@ def contributor_detail(
             "current_column": current,
             "focus_hours": round(full.get(focus, 0.0) / 3600, 2) if focus else 0.0,
             "working_hours": round(sum(full.values()) / 3600, 2),
-            "lead_time_hours": round(
-                ((tl.closed_at or now) - tl.created_at).total_seconds() / 3600, 2
-            ) if tl.created_at else 0.0,
+            "lead_time_hours": round(elapsed(tl.created_at, tl.closed_at or now) / 3600, 2),
             "time_by_column": {
                 label: {"hours": round(sec / 3600, 2), "human": format_duration(sec)}
                 for label, sec in sorted(full.items(), key=lambda x: -x[1])
