@@ -325,3 +325,15 @@ As duas páginas usam a **mesma paleta da tela** — a cor de cada coluna do boa
 vermelho < 50%. O CSS de impressão força `print-color-adjust: exact`, senão o
 Chrome imprimiria as barras em cinza.
 
+## Sincronização
+
+O sync é incremental: guarda o timestamp do último import e só rebusca issues
+com `updated_after` posterior, substituindo a linha do tempo de labels delas.
+Para manter o dashboard atualizado sozinho, agende um `POST /api/sync` no cron
+(a cada 15–30 min é suficiente para a maioria dos times).
+
+Custo de chamadas: 1 request por página de issues + **1 request por issue tocada**
+(os eventos de label não têm endpoint em lote no REST). Por isso o primeiro sync
+de um projeto grande demora; os seguintes são rápidos. A concorrência é limitada
+por `MAX_CONCURRENCY` e o cliente faz backoff automático em 429.
+
