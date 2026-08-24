@@ -259,3 +259,69 @@ O sync busca as milestones do projeto **e as herdadas do grupo**
 grupo, não no projeto. Se uma issue apontar para uma milestone que o token
 não enxerga, ela ainda aparece na lista, só sem datas.
 
+## Relatórios
+
+A tela **Relatorio** tem dois relatórios, escolhidos pelo seletor no cabeçalho
+do card (que é o mesmo **filtro de sprint do topo**, escrito na linguagem da
+tela) — são perguntas diferentes, não dois recortes da mesma:
+
+| filtro | relatório | pergunta |
+|---|---|---|
+| `Todas as sprints` | comparativo | estamos melhorando? |
+| uma sprint | resumo daquela sprint | o que aconteceu nesta sprint? |
+
+### Comparativo entre sprints
+
+Junta numa leitura só as três dimensões que o dash mede separado — board,
+pessoas e commits — com a variação contra a sprint anterior:
+
+- fechadas, tempo na coluna de trabalho, acumulado, lead time, commits e
+  aderência à convenção, sprint a sprint;
+- tempo por coluna em cada sprint, cada coluna na sua própria escala;
+- quem fez o quê dentro da sprint, com quanto disso foi revisando.
+
+Três decisões:
+
+- **Taxas comparam em pontos percentuais.** Ir de 44% para 68% é +24pp, não
+  +54% — variação relativa de porcentagem é armadilha de leitura.
+- **A sprint de um commit é a da issue que ele cita**, não a data em que foi
+  feito: commit do primeiro dia da sprint 2 pode ser de issue arrastada da 1.
+  Commit que não cita issue não entra em sprint nenhuma, e o total de órfãos
+  aparece no cabeçalho.
+- **`(sem sprint)` fica fora da comparação.** É um balde, não uma sprint; se
+  virasse linha, a sprint mais antiga seria comparada contra ele.
+
+### Resumo de uma sprint
+
+O mesmo material, mas fundo em vez de largo — e sem cortar no topo: entram
+**todas** as pessoas, não as seis primeiras.
+
+- os números da sprint (fechadas, tempo na coluna de trabalho, acumulado,
+  lead time, commits, convenção), cada um com a variação contra a anterior;
+- **quem fez o quê**: acumulado, tempo revisando, espera causada, issues
+  fechadas e a **aderência à convenção de commit de cada pessoa** naquela
+  sprint;
+- **onde o fluxo travou**: média, mediana, máximo e WIP por coluna *dentro
+  daquela sprint*;
+- as issues mais demoradas e os **commits fora da convenção**, com o motivo
+  de cada um.
+
+### Exportação
+
+Os dois relatórios exportam do mesmo jeito, com dois botões:
+
+- **Exportar PDF** abre o relatório numa aba com `?print=1`: a página se manda
+  imprimir e o *Salvar como PDF* do navegador faz o resto. Gerar o PDF no
+  servidor exigiria um motor de renderização (WeasyPrint, wkhtmltopdf) só para
+  repetir o que o navegador já faz — e ele viria com dependência de sistema no
+  Windows. O CSS de impressão fixa A4, repete o cabeçalho das tabelas nas
+  páginas seguintes (`table-header-group`), evita quebrar linha no meio e
+  preserva as cores das barras.
+- **HTML** baixa o arquivo único, autocontido e **sem script nenhum** — o
+  disparo de impressão só existe na versão `?print=1`.
+
+As duas páginas usam a **mesma paleta da tela** — a cor de cada coluna do board
+é a mesma no dash e no PDF, e as taxas seguem a faixa verde ≥ 80% / âmbar /
+vermelho < 50%. O CSS de impressão força `print-color-adjust: exact`, senão o
+Chrome imprimiria as barras em cinza.
+
