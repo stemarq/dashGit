@@ -38,3 +38,29 @@ uma pessoa nunca passa do tempo de relógio.
 O sync grava tudo num SQLite local; todas as rotas de métrica leem só do cache,
 então o dashboard é instantâneo e não estoura o rate limit do gitlab.com.
 
+## Setup
+
+```bash
+python -m venv .venv
+.venv/Scripts/activate          # Linux/macOS: source .venv/bin/activate
+pip install -r requirements.txt
+
+cp .env.example .env            # e preencha o GITLAB_TOKEN
+```
+
+O token é um [Personal Access Token](https://gitlab.com/-/user_settings/personal_access_tokens)
+com escopo **`read_api`**.
+
+```bash
+uvicorn app.main:app --reload
+```
+
+- Dashboard: http://localhost:8000
+- Docs interativas (Swagger): http://localhost:8000/docs
+
+Primeiro uso: clique em **Sincronizar GitLab** no dashboard, ou
+
+```bash
+curl -X POST "http://localhost:8000/api/sync?project=meu-grupo/meu-projeto"
+```
+
