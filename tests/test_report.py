@@ -141,3 +141,13 @@ def test_sprint_sem_commit_nao_finge_zero_por_cento():
     assert sprint2["delta"]["convention_pp"] is None
 
 
+def test_tempo_e_pessoas_batem_com_as_metricas():
+    seed()
+    por_sprint = {s["milestone"]: s for s in report.sprint_report(1)["sprints"]}
+    assert approx(por_sprint["Sprint 1"]["by_label"]["Doing"]["hours"], 10)
+    assert approx(por_sprint["Sprint 1"]["by_label"]["Review"]["hours"], 5)
+    pessoas = {p["contributor"]: p for p in por_sprint["Sprint 1"]["people"]}
+    assert approx(pessoas["Ana"]["hours"], 10)
+    assert approx(pessoas["Bruno"]["review_hours"], 5)   # revisou a issue da Ana
+
+
