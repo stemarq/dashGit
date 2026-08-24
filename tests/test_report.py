@@ -213,3 +213,10 @@ def test_resumo_lista_os_commits_fora_do_padrao_com_o_motivo():
     assert fora[0]["issue"] == 1
 
 
+def test_html_do_resumo_e_autocontido():
+    seed()
+    d = report.sprint_summary(1, "Sprint 1")
+    html = report.render_summary_html(d)
+    assert html.startswith("<!doctype html>") and "Sprint 1" in html
+    assert "<script" not in html and "http://" not in html
+    assert "window.print()" in report.render_summary_html(d, autoprint=True)
