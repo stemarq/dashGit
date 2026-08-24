@@ -101,3 +101,14 @@ def test_heatmap_soma_todos_os_commits():
     assert sum(sum(linha) for linha in heat["counts"]) == 3
 
 
+def test_identidades_agrupam_emails_do_mesmo_nome():
+    seed([
+        (1, "c1", "c1", "a", "Ana", "ana@empresa.com", iso(-3), 1, 0, 0, "u"),
+        (1, "c2", "c2", "b", "Ana", "ana@gmail.com", iso(-2), 1, 0, 0, "u"),
+    ])
+    ids = cm.identities(1)
+    assert len(ids) == 1
+    assert ids[0]["commits"] == 2
+    assert ids[0]["emails"] == ["ana@empresa.com", "ana@gmail.com"]
+
+
