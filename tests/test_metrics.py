@@ -647,3 +647,50 @@ def test_tempo_revisando_nao_duplica_o_total(monkeypatch):
     assert approx(bruno["review_hours"], 5)
     assert approx(bruno["total_hours"], 7)           # 5h de review + 2h de Doing
     assert approx(bruno["by_label"]["Review"]["hours"], 5)
+
+
+# ── fim de semana ────────────────────────────────────────────────────────
+
+def local(texto: str) -> datetime:
+    """Horario local, que e o fuso em que o fim de semana e avaliado."""
+    return datetime.fromisoformat(texto).astimezone()
+
+
+def test_fim_de_semana_nao_conta_como_tempo(com_fim_de_semana):
+    """Um card que entrou na sexta as 16h e saiu na segunda as 10h nao ficou
+    66h na coluna: ficou 18h uteis."""
+    assert approx(metrics.elapsed(local("2026-08-21T16:00"),
+                                 local("2026-08-24T10:00")) / 3600, 18)
+
+
+def test_intervalo_inteiro_no_fim_de_semana_e_zero(com_fim_de_semana):
+    assert metrics.elapsed(local("2026-08-22T09:00"), local("2026-08-23T18:00")) == 0.0
+
+
+def test_semana_cheia_conta_cinco_dias(com_fim_de_semana):
+    assert approx(metrics.elapsed(local("2026-08-19T09:00"),
+                                 local("2026-08-26T09:00")) / 3600, 120)
+
+
+def test_virada_da_sexta_para_o_sabado(com_fim_de_semana):
+    """A conta e no fuso local: em UTC a sexta brasileira ja seria sabado."""
+    assert approx(metrics.elapsed(local("2026-08-21T23:00"),
+                                 local("2026-08-22T01:00")) / 3600, 1)
+
+
+def test_desligar_a_regra_devolve_o_tempo_de_relogio():
+    """Com a regra desligada a conta volta a ser o tempo de relogio."""
+    assert approx(metrics.elapsed(local("2026-08-21T16:00"),
+                                 local("2026-08-24T10:00")) / 3600, 66)
+
+
+def test_a_regra_vale_para_coluna_fila_e_lead_time(monkeypatch):
+    """A conta e uma so: ligar ou desligar o fim de semana move todos os
+    numeros juntos, nunca metade deles."""
+    seed()
+    sem_regra = metrics.contributor_report(1)
+    monkeypatch.setattr(metrics, "skip_weekends", lambda: True)
+    com_fds = metrics.contributor_report(1)
+    # o seed usa horas relativas a agora, entao o total so pode encolher
+    assert sum(c["total_hours"] for c in com_fds["contributors"]) <= \
+        sum(c["total_hours"] for c in sem_regra["contributors"])
