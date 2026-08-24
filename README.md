@@ -457,3 +457,80 @@ static/
 tests/
 ```
 
+## Interface
+
+O visual segue o kit [CRM UI Charts for SaaS Dashboards](https://www.figma.com/design/s3TpWsbL7fVNRJRHfAoIZO/CRM-UI-Charts-for-SaaS-Dashboards--Community-)
+(Figma Community): sidebar com secoes, topbar com breadcrumb, pills de filtro,
+cards brancos de canto 16px, tooltip escuro e acento roxo/limao. Tema claro e
+escuro, alternado pelo sol na sidebar (a preferencia fica no `localStorage`).
+
+### Telas
+
+- **Visao geral** — o fluxo do board inteiro: ritmo, gargalo, sprints, issues.
+  Clicar numa linha da tabela de issues abre o card: quanto tempo cada
+  pessoa passou nele, coluna por coluna (quem revisou e por quanto tempo),
+  a espera que cada uma causou e a linha do tempo das transicoes.
+- **Contribuidores** — grade de pessoas, carga atual (quantos cards cada uma
+  segura ao mesmo tempo) e, ao clicar, o perfil: tempo por coluna, serie
+  diaria, distribuicao, quebra por sprint e as issues da pessoa.
+- **Commits** — volume e ritmo, ranking de autores com linhas somadas,
+  heatmap de dia da semana × hora, aderência a conventional commits e os
+  commits recentes.
+- **Relatorio** — comparativo entre sprints ou o resumo de uma delas,
+  conforme o filtro de sprint, com exportação em PDF e HTML.
+
+A barra de filtros (projeto, sprint, periodo, colunas) e global: fica acima
+das duas telas e recorta as duas. Selecionar uma sprint em Contribuidores
+recorta a grade, a carga e o perfil aberto.
+Os itens **Issues** e **Colunas do board** da sidebar levam ao card
+correspondente na visao geral, e **Sincronizacao** dispara o sync.
+
+Sem build e sem CDN — os graficos sao SVG gerado em `app.js`:
+
+- **area empilhada** de horas por coluna por dia, com crosshair e tooltip
+- **rosca** de participacao por coluna
+- **treemap** (squarify) do peso de cada coluna
+- **barras** de media por coluna, com marca da mediana
+- **sparklines** nos indicadores
+
+As curvas usam cubica monotona (Fritsch-Carlson) em vez de Catmull-Rom: com
+serie esparsa a suavizacao comum ultrapassa os pontos e, numa area empilhada,
+as camadas se cruzam.
+
+### Tema e controles nativos
+
+O tema e escolhido por `data-theme` no `<html>`, nao por `prefers-color-scheme`.
+Isso significa que o navegador nao sabe sozinho que a pagina esta escura e
+desenha os controles nativos — o popup do `<select>`, a barra de rolagem, o
+autofill — com a paleta clara. As `<option>` herdam o texto branco do tema e
+ficam brancas no branco.
+
+Por isso cada tema declara `color-scheme` (`light` no `:root`, `dark` no
+`[data-theme="dark"]`). As `option` tambem recebem cor e fundo explicitos.
+
+### Cache dos estaticos
+
+`app/main.py` marca `/static` e `/` com `Cache-Control: no-cache`. Nao e "nao
+guarde": o navegador guarda mas revalida sempre, e o ETag do `StaticFiles`
+devolve 304 quando nada mudou. Sem isso o Chrome serve CSS/JS da memoria e uma
+correcao recem-feita parece nao ter funcionado.
+
+### Rolagem horizontal
+
+A pagina nunca rola de lado. Quem garante isso sao duas regras em `app.css`:
+`.page { grid-template-columns: minmax(0, 1fr) }` e `.page > * { min-width: 0 }`.
+Sem elas, um item de grade nao encolhe abaixo do proprio conteudo e uma tabela
+larga estica a coluna inteira, arrastando header e filtros junto.
+
+Tabela larga demais rola dentro do proprio `.table-wrap`. Alem disso, nomes e
+titulos truncam com reticencias, e a coluna auxiliar "Onde o tempo foi" some
+abaixo de 1540px — a mesma informacao esta no perfil da pessoa.
+
+A serie diaria nao vem pronta da API: ela e derivada no cliente a partir das
+`transitions` que `/api/metrics/issues` devolve, repartindo cada intervalo
+entre os dias que ele cobre.
+
+As duas paletas categoricas (clara e escura) foram verificadas com um
+validador de contraste/CVD — nao sao uma inversao automatica uma da outra. A
+cor segue a coluna, nunca a posicao no ranking, entao filtrar nao repinta as
+series que sobraram.
