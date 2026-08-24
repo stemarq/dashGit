@@ -528,3 +528,14 @@ def test_escopo_assigned_ignora_etapa_feita_em_issue_alheia():
     assert "Doing" not in bruno["by_label"]    # 2h na issue 3, que nao e dele
 
 
+def test_revisao_entra_no_acumulado_mesmo_em_assigned():
+    """A revisao e a excecao do escopo: revisar e sempre trabalhar no card de
+    outra pessoa, entao o `assigned` a apagaria por completo."""
+    seed()
+    report = metrics.contributor_report(1)
+    bruno = next(c for c in report["contributors"] if c["contributor"] == "Bruno")
+    assert approx(bruno["by_label"]["Review"]["hours"], 5)
+    assert approx(bruno["total_hours"], 5)     # so a revisao; o Doing alheio fica fora
+    assert approx(bruno["review_hours"], 5) and bruno["review_issues"] == 1
+
+
