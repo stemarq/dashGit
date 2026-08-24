@@ -470,3 +470,19 @@ def test_espera_e_demerito_de_quem_pegou_a_revisao(monkeypatch):
     assert por_pessoa["Ana"]["waiting_hours"] == 0     # ela so colocou na fila
 
 
+def test_fila_sem_revisor_cai_para_a_label_de_nome(monkeypatch):
+    seed()
+    with session() as conn:
+        # a issue 2 entra em Review as -3h e fica esperando, marcada 'Bruno'
+        conn.executemany("INSERT INTO label_events VALUES (?,?,?,?,?,?,?,?)", [
+            (21, 1, 2, "add", "Review", 2, "Ana", iso(-3)),
+            (22, 1, 2, "add", "Bruno", 2, "Ana", iso(-3)),
+        ])
+    _com_fila(monkeypatch)
+
+    assert metrics.person_labels(1).get("bruno") == "Bruno"
+    report = metrics.contributor_report(1)
+    bruno = next(c for c in report["contributors"] if c["contributor"] == "Bruno")
+    assert approx(bruno["waiting_hours"], 3)
+
+
