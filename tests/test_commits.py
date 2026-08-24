@@ -80,3 +80,24 @@ def test_serie_diaria_preenche_dias_vazios():
     assert datas == sorted(datas) and len(set(datas)) == len(datas)
 
 
+def test_serie_troca_de_balde_em_intervalo_longo():
+    """Repo criado de template carrega commits de anos atras; forcar barras
+    diarias renderiza centenas de colunas vazias."""
+    seed([
+        (1, "old", "old", "Initial commit", "Bot", "bot@x.com",
+         (NOW - timedelta(days=1200)).isoformat(), 5, 0, 0, "u0"),
+        (1, "new", "new", "feat: hoje", "Ana", "ana@x.com", iso(-2), 7, 1, 0, "u1"),
+    ])
+    r = cm.commit_report(1)
+    assert r["granularity"] == "month"
+    assert len(r["series"]) < 60          # ~40 meses, nao 1200 dias
+    assert sum(p["commits"] for p in r["series"]) == 2
+
+
+def test_heatmap_soma_todos_os_commits():
+    seed()
+    heat = cm.commit_report(1)["heatmap"]
+    assert len(heat["counts"]) == 7 and len(heat["counts"][0]) == 24
+    assert sum(sum(linha) for linha in heat["counts"]) == 3
+
+
