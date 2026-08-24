@@ -161,3 +161,17 @@ def test_html_e_autocontido_e_cita_a_regra():
     assert "<script" not in html and "http://" not in html
 
 
+def test_html_para_impressao_tem_o_disparo_e_o_normal_nao():
+    """O PDF sai pela caixa de impressao do navegador; o arquivo baixado como
+    HTML continua sem script, para poder ser anexado em qualquer lugar."""
+    seed()
+    d = report.sprint_report(1)
+    assert "<script" not in report.render_html(d)
+    printable = report.render_html(d, autoprint=True)
+    assert "window.print()" in printable
+    assert "Salvar como PDF" in printable
+    assert "@page" in printable and "table-header-group" in printable
+
+
+# ── resumo de uma sprint ─────────────────────────────────────────────────
+
