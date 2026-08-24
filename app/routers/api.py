@@ -122,6 +122,7 @@ def boards(project: str | None = None) -> dict[str, Any]:
         # do tempo de relogio — o cliente avisa em vez de mentir calado
         "columns_known": bool(rows),
         "attribution": metrics.attribution_mode(),
+        "skip_weekends": metrics.skip_weekends(),
         "queue_labels": get_settings().queue_list,
         "scope": metrics.scope_mode(),
         "boards": list(grouped.values()),
