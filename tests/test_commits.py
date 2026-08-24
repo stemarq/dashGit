@@ -59,3 +59,13 @@ def test_merge_commit_fica_de_fora_das_linhas():
     assert com_merge["additions"] == 1043
 
 
+def test_totais_por_autor():
+    seed()
+    autores = {a["author"]: a for a in cm.commit_report(1)["authors"]}
+    assert autores["Ana"]["commits"] == 2
+    assert autores["Ana"]["additions"] == 40
+    assert autores["Bruno"]["commits"] == 1
+    assert autores["Bruno"]["net"] == 4 - 40      # removeu mais do que somou
+    assert [a["author"] for a in cm.commit_report(1)["authors"]] == ["Ana", "Bruno"]
+
+
