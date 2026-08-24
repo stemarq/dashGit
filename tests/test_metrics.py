@@ -486,3 +486,17 @@ def test_fila_sem_revisor_cai_para_a_label_de_nome(monkeypatch):
     assert approx(bruno["waiting_hours"], 3)
 
 
+def test_fila_sem_dono_quando_nao_da_para_saber(monkeypatch):
+    seed()
+    with session() as conn:
+        conn.execute(
+            "INSERT INTO label_events VALUES (23,1,2,'add','Review',2,'Ana',?)", (iso(-3),)
+        )
+    _com_fila(monkeypatch)
+    report = metrics.contributor_report(1)
+    orfa = next(c for c in report["contributors"]
+                if c["contributor"] == metrics.QUEUE_UNCLAIMED)
+    # 3h da issue 2 (ainda esperando) + 5h da issue 1, que nunca saiu do Review
+    assert approx(orfa["waiting_hours"], 8)
+
+
