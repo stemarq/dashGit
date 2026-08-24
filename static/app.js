@@ -26,6 +26,7 @@ const state = {
   report: null,
   summary: null,
   milestones: [],
+  skipWeekends: true,
 };
 
 const SERIES = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6"];
@@ -118,6 +119,9 @@ const colorOf = (label) => state.colors[label] || cssVar("--ink-3");
 
 /* ── serie diaria a partir das transicoes ─────────────────────────────── */
 
+/** Fim de semana no fuso de quem olha, igual ao servidor. */
+const isWeekend = (data) => data.getDay() === 0 || data.getDay() === 6;
+
 function dailySeries(issues, labels, sinceDays) {
   const until = Date.now();
   const since = sinceDays ? until - sinceDays * DAY : null;
@@ -140,10 +144,14 @@ function dailySeries(issues, labels, sinceDays) {
         const dayStart = new Date(cursor); dayStart.setHours(0, 0, 0, 0);
         const dayEnd = dayStart.getTime() + DAY;
         const slice = Math.min(end, dayEnd) - cursor;
-        const key = dayStart.toISOString().slice(0, 10);
-        const bucket = byDay.get(key) || {};
-        bucket[t.label] = (bucket[t.label] || 0) + slice / 3600000;
-        byDay.set(key, bucket);
+        // sabado e domingo nao contam, como no servidor: sem isso o grafico
+        // mostraria trabalho no fim de semana e nao bateria com os totais
+        if (!(state.skipWeekends && isWeekend(dayStart))) {
+          const key = dayStart.toISOString().slice(0, 10);
+          const bucket = byDay.get(key) || {};
+          bucket[t.label] = (bucket[t.label] || 0) + slice / 3600000;
+          byDay.set(key, bucket);
+        }
         cursor = dayEnd;
       }
     }
@@ -154,8 +162,9 @@ function dailySeries(issues, labels, sinceDays) {
   const start = new Date(floor); start.setHours(0, 0, 0, 0);
   const out = [];
   for (let t = start.getTime(); t <= until; t += DAY) {
-    const key = new Date(t).toISOString().slice(0, 10);
-    out.push({ date: new Date(t), values: byDay.get(key) || {} });
+    const dia = new Date(t);
+    if (state.skipWeekends && isWeekend(dia)) continue;
+    out.push({ date: dia, values: byDay.get(dia.toISOString().slice(0, 10)) || {} });
   }
   return out;
 }
@@ -997,6 +1006,7 @@ function renderExclusions(boardData, focus) {
   state.attribution = boardData?.attribution || "mover";
   state.queues = boardData?.queue_labels || [];
   state.scope = boardData?.scope || "assigned";
+  state.skipWeekends = boardData?.skip_weekends ?? true;
   const regra = state.scope === "assigned"
     ? `Conta o que a pessoa fez nas <b>issues atribuidas a ela</b>${
         state.review ? `, mais o tempo dela em <b>${esc(state.review)}</b>` : ""}.
@@ -1011,7 +1021,11 @@ function renderExclusions(boardData, focus) {
         como trabalho de ninguem, e sim como <b>espera causada</b> por quem
         acabou pegando o card.`
     : "";
-  $("attribution-note").innerHTML = regra + fila;
+  const semana = state.skipWeekends
+    ? ` <b>Sabado e domingo nao contam</b>: um card que atravessa a sexta-feira
+        marca um dia util, nao tres.`
+    : "";
+  $("attribution-note").innerHTML = regra + fila + semana;
   $("issues-sub").innerHTML = focus
     ? `Ranqueadas pelo tempo em <b>${esc(focus)}</b>, nao pelo lead time —
        uma issue esquecida na fila nao e uma issue demorada.
