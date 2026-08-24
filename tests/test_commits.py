@@ -22,3 +22,28 @@ def iso(offset_hours: float) -> str:
     return (NOW + timedelta(hours=offset_hours)).isoformat()
 
 
+def seed(rows=None) -> None:
+    init_db()
+    with session() as conn:
+        conn.execute("DELETE FROM commits")
+        conn.execute("DELETE FROM projects")
+        conn.execute(
+            "INSERT INTO projects (id, path, name, web_url, synced_at) VALUES (1,'g/p','P','u',?)",
+            (iso(0),),
+        )
+        conn.executemany(
+            "INSERT INTO commits (project_id, id, short_id, title, author_name, author_email,"
+            " committed_at, additions, deletions, is_merge, web_url) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            rows if rows is not None else [
+                (1, "a1", "a1", "feat: x", "Ana", "ana@x.com", iso(-5), 30, 5, 0, "u1"),
+                (1, "a2", "a2", "fix: y", "Ana", "ana@x.com", iso(-4), 10, 2, 0, "u2"),
+                (1, "b1", "b1", "docs: z", "Bruno", "bruno@x.com", iso(-3), 4, 40, 0, "u3"),
+                (1, "m1", "m1", "Merge branch", "Bruno", "bruno@x.com", iso(-2), 999, 999, 1, "u4"),
+            ],
+        )
+
+
+def approx(value, expected, tol=0.05):
+    return abs(value - expected) <= tol
+
+
