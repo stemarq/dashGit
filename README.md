@@ -434,3 +434,26 @@ Outras ressalvas:
 
 Os testes montam um cache SQLite sintético, sem tocar no GitLab.
 
+## Estrutura
+
+```
+app/
+  config.py         # settings via .env
+  db.py             # schema + conexão SQLite
+  gitlab_client.py  # cliente async: paginação, retry/backoff, concorrência
+  sync.py           # GitLab -> cache
+  metrics.py        # eventos de label -> intervalos -> agregações
+  commits.py        # metricas de commits, identidades e convencao de mensagem
+  report.py         # relatorios de sprint: comparativo e resumo (+ exportacao)
+  routers/api.py    # rotas HTTP
+  main.py           # app FastAPI
+static/
+  index.html        # shell do dashboard
+  app.css           # sistema visual (tokens, cards, sidebar, tabelas)
+  app.js            # fetch, filtros e graficos SVG escritos a mao
+  contributors.js   # navegacao entre telas + tela de contribuidores
+  commits.js        # aba de commits (barras, heatmap, identidades, convencao)
+  report.js         # tela de relatorio: comparativo e resumo de sprint
+tests/
+```
+
