@@ -130,3 +130,14 @@ def test_aderencia_por_sprint_e_a_variacao_em_pontos():
     assert approx(por_sprint["Sprint 2"]["delta"]["convention_pp"], 50.0)
 
 
+def test_sprint_sem_commit_nao_finge_zero_por_cento():
+    """Sem commit nao ha aderencia a medir — 0% diria que o time errou."""
+    seed()
+    with session() as conn:
+        conn.execute("DELETE FROM commits WHERE id = 'c3'")
+    sprint2 = report.sprint_report(1)["sprints"][0]
+    assert sprint2["commits"] == 0
+    assert sprint2["convention_pct"] is None
+    assert sprint2["delta"]["convention_pp"] is None
+
+
