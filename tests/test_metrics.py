@@ -514,3 +514,17 @@ def test_perfil_traz_a_espera_causada(monkeypatch):
     assert approx(issue1["waiting_hours"], 5)
 
 
+def test_escopo_assigned_ignora_etapa_feita_em_issue_alheia():
+    """SCOPE=assigned: etapa feita numa issue de outra pessoa nao entra no
+    tempo individual — o Doing que o Bruno fez na issue 3 fica de fora."""
+    seed()
+    report = metrics.contributor_report(1)
+    por_pessoa = {c["contributor"]: c for c in report["contributors"]}
+
+    assert approx(por_pessoa["Ana"]["by_label"]["Doing"]["hours"], 14)
+    assert "Review" not in por_pessoa["Ana"]["by_label"]
+
+    bruno = por_pessoa["Bruno"]
+    assert "Doing" not in bruno["by_label"]    # 2h na issue 3, que nao e dele
+
+
