@@ -175,3 +175,41 @@ def test_html_para_impressao_tem_o_disparo_e_o_normal_nao():
 
 # ── resumo de uma sprint ─────────────────────────────────────────────────
 
+def test_resumo_traz_a_sprint_inteira():
+    seed()
+    d = report.sprint_summary(1, "Sprint 1")
+    assert d["milestone"]["closed_issues"] == 1 and d["milestone"]["issues"] == 1
+    assert {p["contributor"] for p in d["people"]} == {"Ana", "Bruno"}
+    assert [c["label"] for c in d["columns"]] == ["Doing", "Review"]
+    assert [i["iid"] for i in d["issues"]] == [1]
+    assert d["commits"]["total"] == 2 and d["commits"]["off"] == 1
+
+
+def test_resumo_compara_com_a_sprint_anterior():
+    seed()
+    d = report.sprint_summary(1, "Sprint 2")
+    assert d["compared_to"] == "Sprint 1"
+    assert d["delta"]["convention_pp"] == 50.0     # 100% contra 50%
+    assert approx(d["delta"]["focus_hours"], -60.0)  # 4h de Doing contra 10h
+
+
+def test_resumo_da_primeira_sprint_nao_inventa_comparacao():
+    seed()
+    d = report.sprint_summary(1, "Sprint 1")
+    assert d["compared_to"] is None and d["delta"] == {}
+
+
+def test_resumo_de_sprint_inexistente_volta_vazio():
+    seed()
+    assert report.sprint_summary(1, "Sprint 9") == {}
+    assert report.sprint_summary(1, "(sem sprint)") == {}
+
+
+def test_resumo_lista_os_commits_fora_do_padrao_com_o_motivo():
+    seed()
+    fora = report.sprint_summary(1, "Sprint 1")["commits"]["offenders"]
+    assert [c["short_id"] for c in fora] == ["c2"]
+    assert fora[0]["convention"] == ["espaco"]
+    assert fora[0]["issue"] == 1
+
+
