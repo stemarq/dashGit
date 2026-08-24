@@ -426,3 +426,11 @@ Outras ressalvas:
   etiqueta: o dash volta a contar todas as labels, avisa no topo da página, e
   aí sim os totais podem passar do tempo de relógio.
 
+## Testes
+
+```bash
+.venv/Scripts/python.exe -m pytest tests -q
+```
+
+Os testes montam um cache SQLite sintético, sem tocar no GitLab.
+
