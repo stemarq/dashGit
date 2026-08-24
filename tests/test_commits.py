@@ -112,3 +112,73 @@ def test_identidades_agrupam_emails_do_mesmo_nome():
     assert ids[0]["emails"] == ["ana@empresa.com", "ana@gmail.com"]
 
 
+MEMBROS = [
+    "Tiago Brun de Arruda",
+    "Lucas Delmirio da Silva",
+    "Sofia Farias Brandão",
+    "José Guilherme Gonçalves Maia",
+    "João Paulo Barreto Ferreira Andrade Rodrigues de Paula",
+]
+
+
+def test_casa_nome_curto_unico():
+    assert cm.match_member("Tiago", MEMBROS, "tiagoba2203@gmail.com") == "Tiago Brun de Arruda"
+
+
+def test_casa_login_com_ponto():
+    assert cm.match_member("lucas.delmirio", MEMBROS) == "Lucas Delmirio da Silva"
+
+
+def test_casa_ignorando_acento():
+    assert cm.match_member("sofia.brandao", MEMBROS) == "Sofia Farias Brandão"
+
+
+def test_casa_nome_do_meio_com_sobrenome():
+    assert cm.match_member("Guilherme Maia", MEMBROS) == "José Guilherme Gonçalves Maia"
+
+
+def test_nao_chuta_por_sobrenome_comum():
+    """'Rodrigues' aparece no nome de outra pessoa; um pedaco so nao basta
+    quando o autor assina com nome completo."""
+    assert cm.match_member("Thais Rodrigues Neubauer", MEMBROS) is None
+
+
+def test_nao_identifica_bot():
+    assert cm.match_member("Inteli Hub", MEMBROS, "99201292+intelihub@users.noreply.github.com") is None
+
+
+def test_empate_nao_identifica():
+    """Dois membros com o mesmo primeiro nome: melhor deixar em branco."""
+    assert cm.match_member("Ana", ["Ana Souza", "Ana Lima"]) is None
+
+
+# ── convencao de mensagem ────────────────────────────────────────────────
+
+def test_mensagem_no_padrao_passa():
+    assert cm.check_title("docs(#93): escreve a secao 4.1") == []
+    assert cm.check_title("feat(#7): adiciona filtro por sprint") == []
+
+
+def test_maiuscula_e_permitida():
+    """Decisao do time em 24/08/2026: sigla tecnica no meio da descricao era
+    o motivo mais comum de reprovacao e nao atrapalhava a leitura."""
+    assert cm.check_title("feat(#7): deriva NPS_MEDIO por rota") == []
+    assert cm.check_title("Fix(#1): Corrige o Bug") == []
+
+
+def test_acento_continua_fora_do_padrao():
+    assert cm.check_title("docs(#7): remove duplicacao da secao") == []
+    assert cm.check_title("docs(#7): corrige a duplicação") == ["acento"]
+
+
+def test_espacamento_e_separado_de_formato():
+    assert cm.check_title("feat (#145): carrega os dados") == ["espaco"]
+    assert cm.check_title("feat(#145):carrega os dados") == ["espaco"]
+
+
+def test_sem_issue_e_tipo_invalido():
+    assert cm.check_title("docs: escreve a secao") == ["sem_issue"]
+    assert cm.check_title("wip(#3): mexe em tudo") == ["tipo"]
+    assert cm.check_title("") == ["vazio"]
+
+
