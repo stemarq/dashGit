@@ -69,3 +69,14 @@ def test_totais_por_autor():
     assert [a["author"] for a in cm.commit_report(1)["authors"]] == ["Ana", "Bruno"]
 
 
+def test_serie_diaria_preenche_dias_vazios():
+    seed()
+    r = cm.commit_report(1)
+    assert r["granularity"] == "day"
+    total = sum(p["commits"] for p in r["series"])
+    assert total == 3
+    # o intervalo e continuo: nenhuma data pulada entre o primeiro e o ultimo
+    datas = [p["date"] for p in r["series"]]
+    assert datas == sorted(datas) and len(set(datas)) == len(datas)
+
+
