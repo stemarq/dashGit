@@ -580,3 +580,29 @@ def test_issue_traz_o_tempo_de_cada_pessoa():
     assert por_pessoa["Bruno"]["by_column"]["Review"]["stints"] == 1
 
 
+def test_perfil_de_quem_so_revisou_em_assigned():
+    """Mesmo com SCOPE=assigned, quem so revisou tem perfil: a issue alheia
+    entra com a parte que foi dele, e o acumulado inclui a revisao."""
+    seed()
+    assert metrics.scope_mode() == "assigned"
+    perfil = metrics.contributor_detail(1, "Bruno")
+    issue1 = next(i for i in perfil["issues"] if i["iid"] == 1)
+    assert approx(issue1["review_hours"], 5)
+    assert approx(issue1["working_hours"], 5)   # na issue 1 ele so revisou
+    assert issue1["role"] == ["Review"]
+    assert approx(perfil["by_label"]["Review"]["hours"], 5)
+    assert approx(perfil["total_hours"], 5)
+    assert approx(perfil["review_hours"], 5) and perfil["review_issues"] == 1
+
+    issue = next(i for i in metrics.issue_report(1)["issues"] if i["iid"] == 1)
+    assert "Bruno" in {p["person"] for p in issue["participants"]}
+
+
+def test_participante_marca_coluna_ainda_aberta():
+    seed()
+    issue = next(i for i in metrics.issue_report(1)["issues"] if i["iid"] == 2)
+    ana = next(p for p in issue["participants"] if p["person"] == "Ana")
+    assert ana["by_column"]["Doing"]["still_in_column"] is True
+    assert approx(ana["hours"], 4)
+
+
