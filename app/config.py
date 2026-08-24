@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     # Coluna que representa "trabalho acontecendo". Vazio = detecta sozinho.
     focus_label: str = ""
 
+    # Sabado e domingo nao contam como tempo de trabalho: um card que passa
+    # a sexta-feira em Review nao ficou 3 dias esperando, ficou 1 dia util.
+    # O fim de semana e avaliado no fuso da maquina que roda o dash.
+    skip_weekends: bool = True
+
     # Commits de quem nao e do time (bot do template, professor, convidado)
     # ficam fora de toda metrica de commit por padrao: eles nao sao trabalho
     # do time e afundam a aderencia a convencao. O que sobrou de fora aparece
