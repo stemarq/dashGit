@@ -337,3 +337,76 @@ Custo de chamadas: 1 request por página de issues + **1 request por issue tocad
 de um projeto grande demora; os seguintes são rápidos. A concorrência é limitada
 por `MAX_CONCURRENCY` e o cliente faz backoff automático em 429.
 
+## De quem é o tempo
+
+Cada etapa vai para **quem a fez**, não para o responsável da issue. O sinal é
+`moved_by`: quem aplicou a label da coluna. No fluxo típico, quem executa move
+o card para `Doing`, e quem revisa move para `Review` — então cada um leva a
+sua parte.
+
+```bash
+ATTRIBUTION=mover      # padrão
+ATTRIBUTION=assignee   # tudo para o responsável atual da issue
+```
+
+### Escopo do tempo individual
+
+```bash
+SCOPE=assigned   # padrão: só o que a pessoa fez nas issues atribuídas a ela
+SCOPE=touched    # qualquer issue em que ela fez alguma etapa
+```
+
+Com `assigned`, uma etapa feita numa issue de outra pessoa **não entra no
+tempo individual de ninguém** — com uma exceção: a **revisão**, que é sempre
+trabalho no card dos outros e por isso acumula para quem revisou. O tempo que
+fica de fora não some do dashboard: continua no peso das colunas (rosca,
+treemap) e na análise de gargalo, que são contas por coluna, não por pessoa.
+A consequência é que a soma dos contribuidores é menor que o total do projeto,
+e a diferença é justamente o trabalho feito fora da própria fila.
+
+Quem revisa não fica invisível: além da **espera causada** (abaixo), o
+**tempo revisando** é medido à parte e não obedece ao `SCOPE` — revisar é,
+por definição, trabalhar no card de outra pessoa, e seguir a regra de
+atribuição apagaria justamente o que se quer medir.
+
+### Tempo revisando
+
+```bash
+REVIEW_LABEL=          # vazio = detecta sozinho (Review / Revisao / QA)
+REVIEW_LABEL=Review    # ou aponte a coluna na mão
+```
+
+A coluna de revisão nunca é uma de `QUEUE_LABELS` — `Waiting Review` é espera,
+não revisão. O tempo aparece em três lugares: no card da pessoa em
+**Contribuidores** (`3h 6m revisando · 8 cards`), como estatística própria no
+perfil dela, e na coluna **Revisando** da tabela de issues do perfil, que
+ranqueia pelo maior tempo dela no card — `Doing` ou `Review`.
+
+`review_hours` é um recorte do acumulado, não uma soma nova: o tempo de
+revisão já está dentro de `total_hours` e da coluna `Review` em `by_label`.
+Quem só revisou tem perfil, acumulado e rosca — antes ficava invisível.
+
+Vale conferir no seu projeto se `moved_by` é confiável. Num board real:
+quem move para `Doing` era o assignee em **95/95** issues, e quem move para
+`Review` era o assignee em apenas **1/86** — ou seja, o modo `assignee` estava
+dando 100% do tempo de revisão para a pessoa errada.
+
+### Colunas de fila
+
+```bash
+QUEUE_LABELS=Waiting Review
+```
+
+Uma coluna de fila é onde o card fica **parado esperando alguém pegar**. Esse
+tempo não é trabalho de ninguém, então:
+
+- não entra no tempo de nenhuma pessoa;
+- continua aparecendo na análise de gargalo (é lá que o fluxo trava);
+- vira **espera causada** por quem acabou pegando o card — a demora foi dele.
+
+Card que ainda espera não tem "quem pegou": aí o dash procura uma label com o
+nome de alguém do time; sem isso, a espera fica em `(fila sem dono)`.
+
+No mesmo board real, `Waiting Review` era **94% de todo o tempo contabilizado**.
+Sem esse tratamento, os números por pessoa eram basicamente fila de espera.
+
