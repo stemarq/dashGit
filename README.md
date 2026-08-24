@@ -232,3 +232,30 @@ O card **Identidades de commit** lista quem nao bateu com ninguem do board.
 Normalmente sao bots, ex-integrantes, ou alguem cujos commits estao divididos
 em duas assinaturas.
 
+## Sprints (milestones)
+
+Sprint no GitLab é **milestone**, e o dash trata isso como um eixo de
+agrupamento de primeira classe:
+
+- o seletor de sprint na barra de filtros recorta **todo** o dashboard;
+- o card **Comparativo de sprints** põe uma sprint por linha — tempo por
+  coluna, `% concluído`, lead time médio e nº de pessoas — e clicar numa
+  linha aplica o recorte (clicar de novo volta para "todas");
+- issues sem milestone caem numa pseudo-sprint `(sem sprint)`, para não
+  sumirem da conta.
+
+Duas decisões que valem saber:
+
+- **Sprint desliga o filtro de período.** Uma sprint já é uma janela de
+  tempo; aplicar "últimos 7 dias" por cima esconderia trabalho feito dentro
+  da própria sprint. Com uma sprint escolhida, o pill de período fica inerte.
+- **O comparativo ignora o período de propósito.** Cada sprint é somada pela
+  sua duração inteira — é a única forma de comparar sprints entre si.
+- Com uma sprint selecionada, o delta dos indicadores passa a ser
+  *sprint contra sprint anterior*, não "período anterior".
+
+O sync busca as milestones do projeto **e as herdadas do grupo**
+(`include_parent_milestones`), porque na maioria dos times a sprint mora no
+grupo, não no projeto. Se uma issue apontar para uma milestone que o token
+não enxerga, ela ainda aparece na lista, só sem datas.
+
