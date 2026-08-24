@@ -151,3 +151,13 @@ def test_tempo_e_pessoas_batem_com_as_metricas():
     assert approx(pessoas["Bruno"]["review_hours"], 5)   # revisou a issue da Ana
 
 
+def test_html_e_autocontido_e_cita_a_regra():
+    seed()
+    html = report.render_html(report.sprint_report(1))
+    assert html.startswith("<!doctype html>")
+    assert "tipo(#issue): descricao" in html
+    assert "Sprint 1" in html and "Sprint 2" in html
+    # nada de CSS/JS externo: o arquivo e para virar anexo de entrega
+    assert "<script" not in html and "http://" not in html
+
+
