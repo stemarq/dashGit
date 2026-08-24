@@ -256,3 +256,14 @@ def test_listagem_marca_os_commits_fora_da_convencao():
     assert r["off_convention"] == 1
 
 
+def test_lente_de_fora_do_padrao_nao_encolhe_os_totais():
+    """`only_off` e uma lente de leitura sobre a lista; se os totais caissem
+    junto, o volume de commits do periodo viraria mentira."""
+    seed_identidades()
+    r = cm.commit_report(1, only_off=True)
+    assert r["totals"]["commits"] == 3          # os totais seguem sobre todos
+    assert [c["short_id"] for c in r["recent"]] == ["d2"]
+
+
+# ── quem e do time ───────────────────────────────────────────────────────
+
