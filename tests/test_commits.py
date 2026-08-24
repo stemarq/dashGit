@@ -225,3 +225,24 @@ def seed_identidades() -> None:
         )
 
 
+def test_filtro_por_pessoa_junta_as_identidades_de_git():
+    """Filtrar por contribuinte, nao por assinatura: quem commita como
+    `lucas.delmirio` e como `Lucas Delmirio` e a mesma pessoa."""
+    seed_identidades()
+    r = cm.commit_report(1, author="Lucas Delmirio da Silva")
+    assert r["totals"]["commits"] == 2
+    assert {a["author"] for a in r["authors"]} == {"lucas.delmirio", "Lucas Delmirio"}
+
+
+def test_filtro_por_assinatura_de_git_tambem_vale():
+    seed_identidades()
+    assert cm.commit_report(1, author="lucas.delmirio")["totals"]["commits"] == 2
+    assert cm.commit_report(1, author="lucas@x.com")["totals"]["commits"] == 2
+
+
+def test_filtro_por_quem_nao_e_do_time_cai_no_nome_exato():
+    seed_identidades()
+    assert cm.commit_report(1, author="Ana")["totals"]["commits"] == 1
+    assert cm.commit_report(1, author="ninguem")["totals"]["commits"] == 0
+
+
