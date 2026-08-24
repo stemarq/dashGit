@@ -95,6 +95,7 @@ function renderReport(d) {
             + ` sprint nenhuma.`
           : "")
       + outsidersNote(d.outsiders)
+      + (d.skip_weekends ? " Sabado e domingo nao entram em nenhuma conta de tempo." : "")
     : "Nenhuma sprint no cache.";
 
   $("r-table").innerHTML =
@@ -219,7 +220,8 @@ function renderSummary(d) {
     + (d.compared_to
         ? ` · variacao contra <b>${esc(d.compared_to)}</b>`
         : ` · primeira sprint com dados, nao ha com o que comparar`)
-    + `. Taxas comparam em pontos percentuais (pp).`;
+    + `. Taxas comparam em pontos percentuais (pp).`
+    + (d.skip_weekends ? ` Sabado e domingo nao contam como tempo.` : "");
 
   $("s-stats").innerHTML = [
     { label: "Issues fechadas", value: `${m.closed_issues}/${m.issues}`,

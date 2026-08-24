@@ -138,6 +138,7 @@ def sprint_report(
         "focus_label": focus,
         "review_label": review,
         "orphan_commits": orphan_commits,
+        "skip_weekends": metrics.skip_weekends(),
         "outsiders": _outsiders(project_id),
         "unscheduled": {
             "issues": unscheduled["issues"],
@@ -291,6 +292,7 @@ def sprint_summary(
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "focus_label": focus,
         "review_label": review,
+        "skip_weekends": metrics.skip_weekends(),
         "milestone": {**atual, "web_url": (meta["web_url"] if meta else None)},
         "compared_to": anterior["milestone"] if anterior else None,
         "delta": delta,
@@ -571,7 +573,8 @@ def render_html(data: dict[str, Any], autoprint: bool = False) -> str:
 <h1>Relatorio comparativo de sprints</h1>
 <p class="sub">{e(project)} · gerado em {gerado.strftime('%d/%m/%Y %H:%M')}</p>
 <p class="sub">Cada sprint e medida pela sua duracao inteira. A variacao e contra a
-sprint imediatamente anterior; taxas comparam em pontos percentuais (pp).</p>
+sprint imediatamente anterior; taxas comparam em pontos percentuais (pp).{
+  ' Sabado e domingo nao entram em nenhuma conta de tempo.' if data['skip_weekends'] else ''}</p>
 
 <section>
 <h2 style="margin-top:0">Visao por sprint</h2>
@@ -706,7 +709,8 @@ def render_summary_html(data: dict[str, Any], autoprint: bool = False) -> str:
 <p class="sub">{e(project)} · {e(_periodo(m))} · gerado em {gerado.strftime('%d/%m/%Y %H:%M')}</p>
 <p class="sub">{'Variacao contra ' + e(data['compared_to']) + '.'
   if data['compared_to'] else 'Primeira sprint com dados: nao ha com o que comparar.'}
-  Taxas comparam em pontos percentuais (pp).</p>
+  Taxas comparam em pontos percentuais (pp).{
+  ' Sabado e domingo nao entram em nenhuma conta de tempo.' if data['skip_weekends'] else ''}</p>
 
 <section><div class="kpis">{cartoes}</div></section>
 
