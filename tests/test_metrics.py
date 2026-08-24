@@ -567,3 +567,16 @@ def test_gargalo_por_coluna_nao_depende_do_escopo():
     assert colunas["Doing"]["completed_passes"] == 2
 
 
+def test_issue_traz_o_tempo_de_cada_pessoa():
+    """A pergunta 'quanto o fulano ficou revisando esta issue' tem resposta
+    na propria issue: a issue 1 e da Ana (10h em Doing), mas quem revisou
+    foram as 5h do Bruno."""
+    seed()
+    issue = next(i for i in metrics.issue_report(1)["issues"] if i["iid"] == 1)
+    por_pessoa = {p["person"]: p for p in issue["participants"]}
+    assert approx(por_pessoa["Bruno"]["by_column"]["Review"]["hours"], 5)
+    assert approx(por_pessoa["Ana"]["by_column"]["Doing"]["hours"], 10)
+    assert approx(por_pessoa["Bruno"]["share"], 33.3, tol=0.2)
+    assert por_pessoa["Bruno"]["by_column"]["Review"]["stints"] == 1
+
+
