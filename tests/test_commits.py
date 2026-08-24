@@ -246,3 +246,13 @@ def test_filtro_por_quem_nao_e_do_time_cai_no_nome_exato():
     assert cm.commit_report(1, author="ninguem")["totals"]["commits"] == 0
 
 
+def test_listagem_marca_os_commits_fora_da_convencao():
+    seed_identidades()
+    r = cm.commit_report(1)
+    por_id = {c["short_id"]: c for c in r["recent"]}
+    assert por_id["d1"]["convention"] == []
+    assert por_id["d2"]["convention"] == ["espaco"]
+    assert por_id["d1"]["issue"] == 1
+    assert r["off_convention"] == 1
+
+
