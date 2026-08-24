@@ -127,3 +127,108 @@ Deixando `FOCUS_LABEL` vazio, o dash detecta sozinho (procura `Doing`,
 `Em andamento`, `In progress`, `WIP`…); sem achar, usa a primeira coluna não
 excluída do board.
 
+## Commits
+
+O sync traz os commits de **todos os branches** com `with_stats=true`, entao as
+linhas adicionadas/removidas vêm na propria listagem — sem um request por
+commit, diferente dos eventos de label. E incremental por data, com um dia de
+sobreposicao porque rebase reescreve a data do commit.
+
+Tres decisoes que mudam os numeros:
+
+- **Merge commits ficam de fora** por padrao. Eles repetem as linhas dos
+  commits que trazem; num board real isso somava +999/-999 numa tacada.
+  `?include_merges=true` traz de volta.
+- **O balde da serie cresce com o intervalo** (dia até 70 dias, semana até
+  ~13 meses, mes acima disso). Repositorio criado a partir de template carrega
+  commits de anos atras: sem isso o grafico vira centenas de colunas vazias com
+  a atividade real espremida na borda.
+- **Sprint e coluna nao filtram commits** — commit nao passa por board. So o
+  periodo e o projeto valem nessa aba.
+
+### Conventional commits
+
+A regra medida é a combinada pelo time:
+
+```
+tipo(#issue): descricao      # sem acentuação
+```
+
+Tipos aceitos: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `style`,
+`perf`, `build`, `ci`, `revert`.
+
+**Maiúscula é permitida** (decisão do time em 24/08/2026). Era o motivo mais
+comum de reprovação — quase sempre sigla técnica no meio da descrição
+(`deriva NPS_MEDIO por rota`) — e não atrapalhava a leitura de ninguém.
+
+Cada commit fora do padrão vira um ou mais **motivos**, e é isso que a tela
+mostra — reprovar sem dizer o quê não ajuda ninguém a corrigir:
+
+| motivo | exemplo |
+|---|---|
+| `acento` | `docs(#7): corrige a duplicação` |
+| `espaco` | `feat (#145): carrega os dados`, `feat(#145):carrega` |
+| `tipo` | `wip(#3): mexe em tudo` |
+| `sem_issue` | `docs: escreve a secao` |
+| `formato` | tem `#7` em algum lugar, mas não no formato |
+
+Três decisões que mudam o número:
+
+- **A forma é conferida no texto normalizado**, então a caixa não interfere no
+  veredito: `Fix(#1): Corrige` tem a forma certa e passa.
+- **Merge commits ficam de fora.** A mensagem é gerada pelo GitLab; reprovar
+  o time por ela não mede nada.
+- **Quem não é do time fica de fora** (veja abaixo).
+
+O nome do git é casado com o usuário do GitLab (`lucas.delmirio` →
+`Lucas Delmirio da Silva`); quem não casa aparece marcado como *fora do time*
+— normalmente é o template do repositório ou alguém de fora.
+
+Na tela, cada commit fora do padrão vem com uma **barra lateral âmbar, um
+triângulo e as etiquetas do que quebrou**, e dois controles no cabeçalho da
+listagem:
+
+- **filtro por pessoa** — recorta a tela inteira (ritmo, ranking, heatmap e
+  aderência passam a ser dela). Filtra por *contribuinte*, não por assinatura:
+  as identidades de git da mesma pessoa entram juntas, inclusive quando o
+  filtro é pelo e-mail;
+- **"só fora do padrão"** — recorta apenas a listagem. Os totais continuam
+  sobre todos os commits: encolher os dois juntos mentiria sobre o volume.
+
+### Quem é do time
+
+```bash
+COUNT_NON_MEMBERS=false   # padrão: só o time entra nas métricas de commit
+```
+
+O bot do template (`Inteli Hub`), contas de professor e convidados commitam no
+mesmo repositório. Contar isso como trabalho do time distorce **ritmo, ranking,
+linhas e aderência** — e a aderência deles é sempre 0%, porque nem tentam
+seguir a convenção do time. Num board real, os 18 commits de fora derrubavam a
+aderência de **72,9% para 64,6%**.
+
+É do time quem aparece como usuário nos eventos do board (`label_events`). O
+casamento é o mesmo das identidades, por nome e e-mail.
+
+O que ficou de fora **nunca some calado**: cada tela e cada relatório declaram
+quantos commits foram ignorados e de quem (`outsiders` na API). E se o projeto
+não tiver board sincronizado, não há lista de membros para comparar — nesse
+caso ninguém é excluído, porque zerar a tela seria pior que o ruído.
+
+### Identidades
+
+O autor de um commit vem do `git config` da maquina, nao do usuario do GitLab:
+a mesma pessoa aparece como `Tiago`, `lucas.delmirio` ou `Guilherme Maia`. O
+dash liga as duas pontas comparando os pedacos do nome e do login do e-mail,
+ignorando acentos.
+
+A regra e conservadora de proposito: dois pedacos em comum bastam, mas **um so
+pedaco** vale apenas quando o autor assina com um nome unico (`Tiago`). Senao,
+um sobrenome corriqueiro faria de duas pessoas a mesma — num board real,
+"Thais Rodrigues Neubauer" casaria com "Joao Paulo ... Rodrigues de Paula".
+Empate tambem nao identifica.
+
+O card **Identidades de commit** lista quem nao bateu com ninguem do board.
+Normalmente sao bots, ex-integrantes, ou alguem cujos commits estao divididos
+em duas assinaturas.
+
