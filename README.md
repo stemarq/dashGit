@@ -64,3 +64,41 @@ Primeiro uso: clique em **Sincronizar GitLab** no dashboard, ou
 curl -X POST "http://localhost:8000/api/sync?project=meu-grupo/meu-projeto"
 ```
 
+## Endpoints
+
+| Método | Rota | O que faz |
+|---|---|---|
+| `POST` | `/api/sync?project=&full=` | Puxa issues, boards e eventos de label do GitLab. Incremental por padrão (`full=true` refaz tudo). |
+| `GET` | `/api/projects` | Projetos no cache e quando foram sincronizados. |
+| `GET` | `/api/boards?project=` | Boards e suas colunas (labels). |
+| `GET` | `/api/milestones?project=` | Sprints no cache, com contagem de issues, estado e datas. |
+| `GET` | `/api/metrics/milestones` | **Comparativo entre sprints**: tempo por coluna, throughput, lead time. |
+| `GET` | `/api/metrics/contributors` | **Tempo por contribuidor × coluna**, com totais, médias, tempo revisando e issues em aberto. |
+| `GET` | `/api/metrics/contributor?name=` | Perfil de uma pessoa: tempo por coluna, por sprint, tempo revisando, espera causada e as issues dela. |
+| `GET` | `/api/metrics/columns` | Média, mediana, máximo e WIP por coluna — para achar o gargalo. |
+| `GET` | `/api/metrics/issues` | Drill-down: linha do tempo completa de cada issue, com quem moveu o card e `participants` — o tempo de cada pessoa naquele card, por coluna. Ranqueia por tempo na coluna de trabalho (`sort=focus\|working\|lead_time`). |
+| `GET` | `/api/metrics/commits` | **Commits**: volume, autores, ritmo por dia/semana/mes e heatmap dia × hora. `author=` filtra por pessoa (nome do GitLab ou assinatura do git); `only_off=true` lista só os commits fora da convenção. |
+| `GET` | `/api/commit-authors` | Autores de commit, e-mails de cada um e o usuário do GitLab correspondente. |
+| `GET` | `/api/metrics/commit-convention` | **Conventional commits**: aderência de cada pessoa e o que quebra em cada commit fora do padrão. |
+| `GET` | `/api/report/sprints` | **Relatório comparativo**: board, pessoas e commits por sprint, com a variação contra a anterior. |
+| `GET` | `/api/report/sprints.html` | O mesmo relatório como página autocontida (`?download=false` abre no navegador, `?print=1` abre a caixa de impressão). |
+| `GET` | `/api/report/sprint?milestone=` | **Resumo de uma sprint**: números, gargalo, pessoas, issues e commits. |
+| `GET` | `/api/report/sprint.html?milestone=` | O resumo como página autocontida, com os mesmos `download`/`print`. |
+| `GET` | `/api/health` | Status e tamanho do cache. |
+
+Filtros comuns em todas as rotas de métrica:
+`project` (`grupo/projeto` ou ID), `labels` (`Doing,Review`),
+`milestone` (título da sprint), `days` ou `since` (ISO 8601),
+`state` (`opened`/`closed`).
+
+```bash
+# tempo em Doing nos últimos 30 dias
+curl "http://localhost:8000/api/metrics/contributors?labels=Doing&days=30"
+
+# a mesma métrica, recortada por sprint
+curl "http://localhost:8000/api/metrics/contributors?labels=Doing&milestone=Sprint%2014"
+
+# onde o fluxo trava
+curl "http://localhost:8000/api/metrics/columns"
+```
+
