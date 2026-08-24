@@ -410,3 +410,19 @@ nome de alguém do time; sem isso, a espera fica em `(fila sem dono)`.
 No mesmo board real, `Waiting Review` era **94% de todo o tempo contabilizado**.
 Sem esse tratamento, os números por pessoa eram basicamente fila de espera.
 
+## Limitação: quem move nem sempre é quem faz
+
+O modelo assume que quem arrasta o card no board é quem fez a etapa. Se no seu
+time alguém move os cards dos outros (um scrum master, uma automação), a
+atribuição sai errada — nesse caso use `ATTRIBUTION=assignee`.
+
+Outras ressalvas:
+- Issues anteriores ao GitLab 12.3 podem não ter eventos de label. Um `remove`
+  sem `add` correspondente é descartado em vez de gerar tempo falso.
+- Listas de board por *assignee* ou *milestone* são ignoradas — só colunas
+  baseadas em label viram métrica.
+- Todos os cálculos são em tempo corrido (24/7), não em horário comercial.
+- Se o projeto não tiver board sincronizado, não há como distinguir coluna de
+  etiqueta: o dash volta a contar todas as labels, avisa no topo da página, e
+  aí sim os totais podem passar do tempo de relógio.
+
