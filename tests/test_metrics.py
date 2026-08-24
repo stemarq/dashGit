@@ -606,3 +606,33 @@ def test_participante_marca_coluna_ainda_aberta():
     assert approx(ana["hours"], 4)
 
 
+def test_participante_nao_ganha_o_tempo_de_fila(monkeypatch):
+    """Com Review como fila, as 5h nao viram trabalho de ninguem: aparecem
+    como espera causada por quem pegou o card."""
+    seed()
+    with session() as conn:
+        conn.execute(
+            "INSERT INTO label_events VALUES (21,1,1,'add','Doing',3,'Bruno',?)", (iso(-15),)
+        )
+    monkeypatch.setattr(metrics, "queue_labels", lambda: {"review"})
+
+    issue = next(i for i in metrics.issue_report(1)["issues"] if i["iid"] == 1)
+    bruno = next(p for p in issue["participants"] if p["person"] == "Bruno")
+    assert "Review" not in bruno["by_column"]
+    assert approx(bruno["waiting_hours"], 5)
+
+
+def test_coluna_de_revisao_detectada_pelo_board():
+    seed()
+    assert metrics.review_label(1) == "Review"
+    assert metrics.focus_label(1) == "Doing"
+
+
+def test_fila_nao_e_coluna_de_revisao(monkeypatch):
+    """'Waiting Review' e espera, nao revisao: se a unica coluna com cara de
+    review for fila, o dash prefere nao ter metrica a ter uma errada."""
+    seed()
+    monkeypatch.setattr(metrics, "queue_labels", lambda: {"review"})
+    assert metrics.review_label(1) is None
+
+
