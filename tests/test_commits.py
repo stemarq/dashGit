@@ -182,3 +182,28 @@ def test_sem_issue_e_tipo_invalido():
     assert cm.check_title("") == ["vazio"]
 
 
+def test_aderencia_por_pessoa_ignora_merge():
+    seed([
+        (1, "c1", "c1", "feat(#1): adiciona o filtro", "Ana", "ana@x.com", iso(-5), 1, 0, 0, "u1"),
+        (1, "c2", "c2", "Fix (#2): Corrige", "Ana", "ana@x.com", iso(-4), 1, 0, 0, "u2"),
+        (1, "c3", "c3", "docs: sem issue", "Bruno", "bruno@x.com", iso(-3), 1, 0, 0, "u3"),
+        (1, "c4", "c4", "Merge branch main", "Bruno", "bruno@x.com", iso(-2), 1, 0, 1, "u4"),
+    ])
+    r = cm.convention_report(1)
+    por_pessoa = {a["author"]: a for a in r["authors"]}
+    assert r["totals"] == {"commits": 3, "ok": 1, "off": 2, "pct": 33.3}
+    assert por_pessoa["Ana"]["pct"] == 50.0 and por_pessoa["Ana"]["ok"] == 1
+    assert por_pessoa["Bruno"]["pct"] == 0.0          # o merge nao entra
+    assert por_pessoa["Bruno"]["reasons"] == {"sem_issue": 1}
+    assert por_pessoa["Ana"]["offenders"][0]["title"] == "Fix (#2): Corrige"
+    assert por_pessoa["Ana"]["reasons"] == {"espaco": 1}   # a caixa nao reprova
+
+
+def test_issue_citada_na_mensagem():
+    assert cm.issue_ref("feat(#145): x") == 145
+    assert cm.issue_ref("mexe na issue #7 sem padrao") == 7
+    assert cm.issue_ref("sem referencia") is None
+
+
+# ── filtro por contribuinte ──────────────────────────────────────────────
+
