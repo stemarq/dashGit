@@ -207,3 +207,21 @@ def test_issue_citada_na_mensagem():
 
 # ── filtro por contribuinte ──────────────────────────────────────────────
 
+def seed_identidades() -> None:
+    """A mesma pessoa assinando de duas formas, mais um membro do GitLab."""
+    seed([
+        (1, "d1", "d1", "feat(#1): adiciona o filtro", "lucas.delmirio",
+         "lucas@x.com", iso(-5), 1, 0, 0, "u1"),
+        (1, "d2", "d2", "Fix (#2): corrige", "Lucas Delmirio",
+         "lucas.delmirio@y.com", iso(-4), 1, 0, 0, "u2"),
+        (1, "d3", "d3", "docs(#3): escreve a secao", "Ana", "ana@x.com", iso(-3), 1, 0, 0, "u3"),
+    ])
+    with session() as conn:
+        conn.execute("DELETE FROM label_events")
+        conn.executemany(
+            "INSERT INTO label_events VALUES (?,?,?,?,?,?,?,?)",
+            [(1, 1, 1, "add", "Doing", 7, "Lucas Delmirio da Silva", iso(-5)),
+             (2, 1, 2, "add", "Doing", 8, "Ana Paula Souza", iso(-3))],
+        )
+
+
