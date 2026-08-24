@@ -539,3 +539,31 @@ def test_revisao_entra_no_acumulado_mesmo_em_assigned():
     assert approx(bruno["review_hours"], 5) and bruno["review_issues"] == 1
 
 
+def test_escopo_assigned_preserva_o_total_do_projeto():
+    """O recorte e da atribuicao individual. O peso de cada coluna e conta de
+    projeto e nao pode encolher junto — senao a rosca e o treemap mentem."""
+    seed()
+    report = metrics.contributor_report(1)
+    assert approx(report["totals"]["Review"]["hours"], 5)   # a revisao existiu
+    assert approx(report["totals"]["Doing"]["hours"], 16)   # 10 + 4 + 2
+
+    soma_pessoas = sum(c["total_hours"] for c in report["contributors"])
+    soma_colunas = sum(v["hours"] for v in report["totals"].values())
+    assert soma_pessoas < soma_colunas   # a diferenca e o que ficou fora do escopo
+
+
+def test_escopo_assigned_no_perfil():
+    seed()
+    perfil = metrics.contributor_detail(1, "Ana")
+    assert "Review" not in perfil["by_label"]
+    issue1 = next(i for i in perfil["issues"] if i["iid"] == 1)
+    assert issue1["role"] == ["Doing"]
+
+
+def test_gargalo_por_coluna_nao_depende_do_escopo():
+    seed()
+    colunas = {c["label"]: c for c in metrics.column_report(1)["columns"]}
+    assert approx(colunas["Review"]["avg_hours"], 5)
+    assert colunas["Doing"]["completed_passes"] == 2
+
+
