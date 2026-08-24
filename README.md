@@ -391,6 +391,29 @@ quem move para `Doing` era o assignee em **95/95** issues, e quem move para
 `Review` era o assignee em apenas **1/86** — ou seja, o modo `assignee` estava
 dando 100% do tempo de revisão para a pessoa errada.
 
+### Fim de semana
+
+```bash
+SKIP_WEEKENDS=true   # padrão
+```
+
+Sábado e domingo **não contam como tempo** em nenhuma métrica: coluna, fila,
+lead time e espera causada. Um card que entra em `Review` na sexta às 16h e sai
+na segunda às 10h ficou **18h úteis**, não 66h — sem isso, todo card que
+atravessa um fim de semana parece um gargalo.
+
+A regra vive num lugar só (`metrics.elapsed`), e é por lá que passam todas as
+contas de duração: ligar ou desligar move todos os números juntos, nunca
+metade deles. O fim de semana é avaliado **no fuso da máquina** que roda o
+dash, porque é ele que diz quando o time não estava trabalhando — em UTC, a
+sexta-feira brasileira já seria sábado às 21h.
+
+O gráfico diário segue a mesma regra: os dias de fim de semana somem do eixo,
+senão a linha mostraria trabalho no sábado e não bateria com os totais.
+
+Num board real, a mudança tirou 96h da espera causada de uma pessoa (quatro
+fins de semana) e baixou o lead time médio da Sprint 01 de 2,4 para 2,0 dias.
+
 ### Colunas de fila
 
 ```bash
