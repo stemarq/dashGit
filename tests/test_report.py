@@ -190,7 +190,9 @@ def test_resumo_compara_com_a_sprint_anterior():
     d = report.sprint_summary(1, "Sprint 2")
     assert d["compared_to"] == "Sprint 1"
     assert d["delta"]["convention_pp"] == 50.0     # 100% contra 50%
-    assert approx(d["delta"]["focus_hours"], -60.0)  # 4h de Doing contra 10h
+    # a issue 2 continua em Doing, entao o tempo dela cresce com o relogio:
+    # a comparacao e da ordem de grandeza (4h contra 10h), nao do centesimo
+    assert approx(d["delta"]["focus_hours"], -60.0, tol=1.5)
 
 
 def test_resumo_da_primeira_sprint_nao_inventa_comparacao():
