@@ -97,3 +97,36 @@ def test_sprints_da_mais_recente_para_a_mais_antiga():
     assert d["sprints"][-1]["compared_to"] is None
 
 
+def test_issues_sem_sprint_ficam_fora_da_comparacao():
+    """`(sem sprint)` e um balde: se virasse linha, a sprint mais antiga
+    seria comparada contra ele e inventaria variacao."""
+    seed()
+    d = report.sprint_report(1)
+    assert "(sem sprint)" not in [s["milestone"] for s in d["sprints"]]
+    assert d["unscheduled"]["issues"] == 1
+    assert d["sprints"][-1]["delta"] == {}
+
+
+def test_commit_vai_para_a_sprint_da_issue_e_nao_pela_data():
+    """Os commits da issue 1 foram feitos ontem, mas a issue e da Sprint 1."""
+    seed()
+    por_sprint = {s["milestone"]: s for s in report.sprint_report(1)["sprints"]}
+    assert por_sprint["Sprint 1"]["commits"] == 2
+    assert por_sprint["Sprint 2"]["commits"] == 1
+
+
+def test_commit_sem_issue_nao_entra_em_sprint_nenhuma():
+    seed()
+    d = report.sprint_report(1)
+    assert d["orphan_commits"] == 1
+    assert sum(s["commits"] for s in d["sprints"]) == 3
+
+
+def test_aderencia_por_sprint_e_a_variacao_em_pontos():
+    seed()
+    por_sprint = {s["milestone"]: s for s in report.sprint_report(1)["sprints"]}
+    assert approx(por_sprint["Sprint 1"]["convention_pct"], 50.0)   # 1 de 2
+    assert approx(por_sprint["Sprint 2"]["convention_pct"], 100.0)  # 1 de 1
+    assert approx(por_sprint["Sprint 2"]["delta"]["convention_pp"], 50.0)
+
+
