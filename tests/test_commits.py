@@ -286,3 +286,28 @@ def seed_com_gente_de_fora() -> None:
         )
 
 
+def test_commit_de_fora_do_time_nao_entra_em_metrica_nenhuma():
+    """O bot do template e a conta do professor commitam no mesmo repositorio;
+    contar isso como trabalho do time distorce ritmo, ranking e aderencia."""
+    seed_com_gente_de_fora()
+    r = cm.commit_report(1)
+    assert r["totals"]["commits"] == 2 and r["totals"]["authors"] == 2
+    assert {a["author"] for a in r["authors"]} == {"Ana", "Bruno"}
+    assert r["totals"]["additions"] == 2          # sem as 500 linhas do template
+
+
+def test_o_que_ficou_de_fora_e_declarado():
+    """Excluir calado seria pior que incluir: quem le tem de saber o que sumiu."""
+    seed_com_gente_de_fora()
+    nota = cm.commit_report(1)["outsiders"]
+    assert nota["commits"] == 2
+    assert {a["author"] for a in nota["authors"]} == {"Inteli Hub", "Thais Neubauer"}
+
+
+def test_aderencia_nao_e_afundada_por_quem_nao_segue_a_convencao_do_time():
+    seed_com_gente_de_fora()
+    r = cm.convention_report(1)
+    assert r["totals"] == {"commits": 2, "ok": 2, "off": 0, "pct": 100.0}
+    assert r["outsiders"]["commits"] == 2
+
+
