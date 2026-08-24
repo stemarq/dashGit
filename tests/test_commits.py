@@ -267,3 +267,22 @@ def test_lente_de_fora_do_padrao_nao_encolhe_os_totais():
 
 # ── quem e do time ───────────────────────────────────────────────────────
 
+def seed_com_gente_de_fora() -> None:
+    """Time de duas pessoas, mais o bot do template e um professor."""
+    seed([
+        (1, "e1", "e1", "feat(#1): adiciona o filtro", "Ana", "ana@x.com", iso(-5), 1, 0, 0, "u1"),
+        (1, "e2", "e2", "docs(#2): escreve a secao", "Bruno", "bruno@x.com", iso(-4), 1, 0, 0, "u2"),
+        (1, "e3", "e3", "Initial commit from template", "Inteli Hub",
+         "hub@inteli.edu.br", iso(-3), 500, 0, 0, "u3"),
+        (1, "e4", "e4", "correcoes da entrega", "Thais Neubauer",
+         "thais@prof.edu.br", iso(-2), 9, 9, 0, "u4"),
+    ])
+    with session() as conn:
+        conn.execute("DELETE FROM label_events")
+        conn.executemany(
+            "INSERT INTO label_events VALUES (?,?,?,?,?,?,?,?)",
+            [(1, 1, 1, "add", "Doing", 7, "Ana Paula Souza", iso(-5)),
+             (2, 1, 2, "add", "Doing", 8, "Bruno Lima", iso(-4))],
+        )
+
+
