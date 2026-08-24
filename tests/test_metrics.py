@@ -636,3 +636,14 @@ def test_fila_nao_e_coluna_de_revisao(monkeypatch):
     assert metrics.review_label(1) is None
 
 
+def test_tempo_revisando_nao_duplica_o_total(monkeypatch):
+    """Em SCOPE=touched a revisao ja esta no total; a conta de revisao e um
+    recorte dele, nao uma soma nova."""
+    escopo_amplo(monkeypatch)
+    seed()
+    report = metrics.contributor_report(1)
+    bruno = next(c for c in report["contributors"] if c["contributor"] == "Bruno")
+    assert report["review_label"] == "Review"
+    assert approx(bruno["review_hours"], 5)
+    assert approx(bruno["total_hours"], 7)           # 5h de review + 2h de Doing
+    assert approx(bruno["by_label"]["Review"]["hours"], 5)
