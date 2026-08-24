@@ -47,3 +47,15 @@ def approx(value, expected, tol=0.05):
     return abs(value - expected) <= tol
 
 
+def test_merge_commit_fica_de_fora_das_linhas():
+    """Merge repete as linhas dos commits que traz; contar infla tudo."""
+    seed()
+    t = cm.commit_report(1)["totals"]
+    assert t["commits"] == 3
+    assert t["additions"] == 44 and t["deletions"] == 47
+
+    com_merge = cm.commit_report(1, include_merges=True)["totals"]
+    assert com_merge["commits"] == 4
+    assert com_merge["additions"] == 1043
+
+
