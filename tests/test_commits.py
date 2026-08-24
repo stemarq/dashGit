@@ -311,3 +311,18 @@ def test_aderencia_nao_e_afundada_por_quem_nao_segue_a_convencao_do_time():
     assert r["outsiders"]["commits"] == 2
 
 
+def test_sem_board_sincronizado_ninguem_e_excluido():
+    """Sem eventos de label nao ha lista de membros: excluir todo mundo
+    zeraria a tela em vez de protege-la do ruido."""
+    seed_com_gente_de_fora()
+    with session() as conn:
+        conn.execute("DELETE FROM label_events")
+    assert cm.commit_report(1)["totals"]["commits"] == 4
+
+
+def test_flag_traz_os_de_fora_de_volta(monkeypatch):
+    seed_com_gente_de_fora()
+    settings = get_settings()
+    monkeypatch.setattr(settings, "count_non_members", True)
+    assert cm.commit_report(1)["totals"]["commits"] == 4
+    assert cm.commit_report(1)["outsiders"]["commits"] == 0
