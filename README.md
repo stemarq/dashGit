@@ -77,7 +77,7 @@ curl -X POST "http://localhost:8000/api/sync?project=meu-grupo/meu-projeto"
 | `GET` | `/api/metrics/contributor?name=` | Perfil de uma pessoa: tempo por coluna, por sprint, tempo revisando, espera causada e as issues dela. |
 | `GET` | `/api/metrics/columns` | Média, mediana, máximo e WIP por coluna — para achar o gargalo. |
 | `GET` | `/api/metrics/issues` | Drill-down: linha do tempo completa de cada issue, com quem moveu o card e `participants` — o tempo de cada pessoa naquele card, por coluna. Ranqueia por tempo na coluna de trabalho (`sort=focus\|working\|lead_time`). |
-| `GET` | `/api/metrics/commits` | **Commits**: volume, autores, ritmo por dia/semana/mes e heatmap dia × hora. `author=` filtra por pessoa (nome do GitLab ou assinatura do git); `only_off=true` lista só os commits fora da convenção. |
+| `GET` | `/api/metrics/commits` | **Commits**: volume, autores, ritmo por dia/semana/mes e heatmap dia × hora. `author=` filtra por pessoa (nome do GitLab ou assinatura do git); `milestone=` recorta pela sprint da issue citada; `only_off=true` lista só os commits fora da convenção. |
 | `GET` | `/api/commit-authors` | Autores de commit, e-mails de cada um e o usuário do GitLab correspondente. |
 | `GET` | `/api/metrics/commit-convention` | **Conventional commits**: aderência de cada pessoa e o que quebra em cada commit fora do padrão. |
 | `GET` | `/api/report/sprints` | **Relatório comparativo**: board, pessoas e commits por sprint, com a variação contra a anterior. |
@@ -143,8 +143,11 @@ Tres decisoes que mudam os numeros:
   ~13 meses, mes acima disso). Repositorio criado a partir de template carrega
   commits de anos atras: sem isso o grafico vira centenas de colunas vazias com
   a atividade real espremida na borda.
-- **Sprint e coluna nao filtram commits** — commit nao passa por board. So o
-  periodo e o projeto valem nessa aba.
+- **Coluna não filtra commits** — commit não passa por board. Já **sprint
+  filtra**: a sprint de um commit é a da *issue que ele cita*, não a data em
+  que foi feito (commit do primeiro dia da sprint 2 pode ser de uma issue
+  arrastada da sprint 1). Quem não cita issue fica de fora, e a tela declara
+  quantos foram.
 
 ### Conventional commits
 
