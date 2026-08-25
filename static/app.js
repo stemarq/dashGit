@@ -28,6 +28,7 @@ const state = {
   milestones: [],
   skipWeekends: true,
   nonWorking: [],
+  queueNonWorking: [],
   holidays: new Set(),
 };
 
@@ -1048,12 +1049,18 @@ function renderExclusions(boardData, focus) {
     ? ` <b>Sabado e domingo nao contam</b>: um card que atravessa a sexta-feira
         marca um dia util, nao tres.`
     : "";
+  const faixas = (lista) => lista.map(([a, b]) => `${esc(a)}–${esc(b)}`).join(", ");
   const janela = state.nonWorking.length
-    ? ` Fora do expediente tambem nao conta: <b>${state.nonWorking
-        .map(([a, b]) => `${esc(a)}–${esc(b)}`).join(", ")}</b>.`
+    ? ` Fora do expediente tambem nao conta: <b>${faixas(state.nonWorking)}</b>.`
+    : "";
+  // a fila mede cobranca, nao trabalho: da para programar em aula, nao para
+  // cobrar revisao de quem esta em sala
+  const janelaFila = state.queueNonWorking.length
+    ? ` So para a <b>fila</b>, ${faixas(state.queueNonWorking)} tambem nao conta:`
+      + ` da para trabalhar nesse horario, mas nao para cobrar revisao.`
     : "";
   const feriado = state.holidays.size ? ` Feriado nao conta como dia util.` : "";
-  $("attribution-note").innerHTML = regra + fila + semana + janela + feriado;
+  $("attribution-note").innerHTML = regra + fila + semana + janela + janelaFila + feriado;
   $("issues-sub").innerHTML = focus
     ? `Ranqueadas pelo tempo em <b>${esc(focus)}</b>, nao pelo lead time —
        uma issue esquecida na fila nao e uma issue demorada.
@@ -1130,6 +1137,7 @@ async function refresh() {
   // fim de semana e janela nao util no cliente
   state.skipWeekends = boardData?.skip_weekends ?? true;
   state.nonWorking = boardData?.non_working_hours || [];
+  state.queueNonWorking = boardData?.queue_non_working_hours || [];
   state.holidays = new Set(boardData?.holidays || []);
 
   state.contributors = contribData;
