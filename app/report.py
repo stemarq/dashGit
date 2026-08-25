@@ -450,6 +450,12 @@ def _delta_html(value: float | None, unit: str = "%", lower_is_better: bool = Fa
             f'{sinal}{value:g}{unit}</span>')
 
 
+# O icone vai embutido: o relatorio exportado tem de abrir igual fora do
+# servidor, e um <link> para /static quebraria assim que o arquivo saisse
+# da maquina.
+_FAVICON = "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23a78bfa%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%236d28d9%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22url%28%23g%29%22%2F%3E%3Cg%20stroke-linecap%3D%22round%22%20stroke-width%3D%224%22%3E%3Cpath%20d%3D%22M9%2023v-5%22%20stroke%3D%22%23fff%22%20opacity%3D%22.85%22%2F%3E%3Cpath%20d%3D%22M16%2023v-9%22%20stroke%3D%22%23fff%22%2F%3E%3Cpath%20d%3D%22M23%2023V9%22%20stroke%3D%22%23c4f82a%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"
+
+
 _SUMMARY_CSS = """
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px; }
@@ -567,6 +573,7 @@ def render_html(data: dict[str, Any], autoprint: bool = False) -> str:
     return f"""<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="{_FAVICON}">
 <title>dashGit — relatorio de sprints — {e(project)}</title>
 <style>{_CSS}</style>{_PRINT_JS if autoprint else ''}</head><body><main>
 {_PRINT_BAR if autoprint else ''}
@@ -702,6 +709,7 @@ def render_summary_html(data: dict[str, Any], autoprint: bool = False) -> str:
     return f"""<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="{_FAVICON}">
 <title>dashGit — {e(m['milestone'])} — {e(project)}</title>
 <style>{_CSS}{_SUMMARY_CSS}</style>{_PRINT_JS if autoprint else ''}</head><body><main>
 {_PRINT_BAR if autoprint else ''}
