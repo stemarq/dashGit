@@ -513,6 +513,7 @@ app/
   routers/api.py    # rotas HTTP
   main.py           # app FastAPI
 static/
+  favicon.svg       # a marca reduzida ao que sobrevive a 16px
   index.html        # shell do dashboard
   app.css           # sistema visual (tokens, cards, sidebar, tabelas)
   app.js            # fetch, filtros e graficos SVG escritos a mao
