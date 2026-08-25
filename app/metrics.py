@@ -11,8 +11,9 @@ O campo `moved_by` mostra quem de fato moveu o card, para conferencia.
 """
 
 from collections import defaultdict
+from functools import lru_cache
 from dataclasses import dataclass, field
-from datetime import datetime, time, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Iterable
 
 from app.config import get_settings
@@ -208,28 +209,83 @@ def skip_weekends() -> bool:
     return get_settings().skip_weekends
 
 
-def _weekend_seconds(start: datetime, end: datetime) -> float:
-    """Quanto do intervalo caiu em sabado ou domingo, no fuso local.
+def _off_day_seconds(start: datetime, end: datetime) -> float:
+    """Quanto do intervalo caiu em dia que nao conta — fim de semana ou feriado.
 
-    O fim de semana e avaliado na hora local porque e ela que diz quando o
-    time nao estava trabalhando — em UTC, a sexta-feira brasileira vira
-    sabado as 21h.
+    A avaliacao e na hora local porque e ela que diz quando o time nao estava
+    trabalhando: em UTC, a sexta-feira brasileira vira sabado as 21h.
     """
     inicio, fim = start.astimezone(), end.astimezone()
-    dia = inicio.date()
-    # comeca no sabado da semana do inicio, mesmo que ele fique para tras:
-    # o max() abaixo corta o que sobra
-    sabado = datetime.combine(
-        dia - timedelta(days=(dia.weekday() - 5) % 7), time.min, tzinfo=inicio.tzinfo
-    )
     total = 0.0
-    while sabado < fim:
-        segunda = sabado + timedelta(days=2)
-        sobreposicao = min(fim, segunda) - max(inicio, sabado)
-        if sobreposicao.total_seconds() > 0:
-            total += sobreposicao.total_seconds()
-        sabado += timedelta(days=7)
+    dia = inicio.date()
+    while dia <= fim.date():
+        if is_off_day(dia):
+            abre = datetime.combine(dia, time.min, tzinfo=inicio.tzinfo)
+            fecha = abre + timedelta(days=1)
+            sobreposicao = min(fim, fecha) - max(inicio, abre)
+            if sobreposicao.total_seconds() > 0:
+                total += sobreposicao.total_seconds()
+        dia += timedelta(days=1)
     return total
+
+
+def _easter(year: int) -> date:
+    """Domingo de Pascoa (algoritmo de Gauss/Meeus).
+
+    Carnaval, sexta-feira santa e corpus christi saem dele, entao o dash
+    acerta os feriados moveis de qualquer ano sem tabela para manter.
+    """
+    a, b, c = year % 19, year // 100, year % 100
+    d, e = b // 4, b % 4
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i, k = c // 4, c % 4
+    ll = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * ll) // 451
+    mes = (h + ll - 7 * m + 114) // 31
+    dia = ((h + ll - 7 * m + 114) % 31) + 1
+    return date(year, mes, dia)
+
+
+# Feriados nacionais fixos. O 20/11 so vale de 2024 em diante (Lei 14.759).
+_FIXOS_BR = ((1, 1), (4, 21), (5, 1), (9, 7), (10, 12), (11, 2), (11, 15), (12, 25))
+
+
+@lru_cache(maxsize=32)
+def _national_holidays(year: int, calendario: str) -> frozenset[date]:
+    if calendario != "br":
+        return frozenset()
+    pascoa = _easter(year)
+    datas = {date(year, mes, dia) for mes, dia in _FIXOS_BR}
+    if year >= 2024:
+        datas.add(date(year, 11, 20))
+    datas |= {
+        pascoa - timedelta(days=47),   # carnaval (terca)
+        pascoa - timedelta(days=2),    # sexta-feira santa
+        pascoa + timedelta(days=60),   # corpus christi
+    }
+    return frozenset(datas)
+
+
+def holidays(year: int) -> frozenset[date]:
+    """Feriados do ano: os nacionais mais os extras do .env."""
+    settings = get_settings()
+    extras = set()
+    for texto in settings.holiday_list:
+        try:
+            extras.add(date.fromisoformat(texto))
+        except ValueError:
+            continue          # data torta no .env nao derruba o dash
+    calendario = settings.holiday_calendar.strip().lower()
+    return frozenset(_national_holidays(year, calendario) | extras)
+
+
+def is_off_day(dia: date) -> bool:
+    """Dia que nao conta inteiro: fim de semana ou feriado."""
+    if skip_weekends() and dia.weekday() >= 5:
+        return True
+    return dia in holidays(dia.year)
 
 
 def non_working_windows() -> list[tuple[time, time]]:
@@ -258,9 +314,9 @@ def _blocked_seconds(start: datetime, end: datetime) -> float:
     total = 0.0
     dia = inicio.date()
     while dia <= fim.date():
-        if skip_weekends() and dia.weekday() >= 5:
+        if is_off_day(dia):
             dia += timedelta(days=1)
-            continue
+            continue          # o dia ja saiu inteiro; descontar de novo dobraria
         for h1, h2 in janelas:
             janela_ini = datetime.combine(dia, h1, tzinfo=inicio.tzinfo)
             janela_fim = datetime.combine(dia, h2, tzinfo=inicio.tzinfo)
@@ -279,9 +335,7 @@ def elapsed(start: datetime | None, end: datetime | None) -> float:
     """
     if start is None or end is None or end <= start:
         return 0.0
-    bruto = (end - start).total_seconds()
-    if skip_weekends():
-        bruto -= _weekend_seconds(start, end)
+    bruto = (end - start).total_seconds() - _off_day_seconds(start, end)
     return max(0.0, bruto - _blocked_seconds(start, end))
 
 
