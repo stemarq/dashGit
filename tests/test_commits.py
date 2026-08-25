@@ -326,3 +326,73 @@ def test_flag_traz_os_de_fora_de_volta(monkeypatch):
     monkeypatch.setattr(settings, "count_non_members", True)
     assert cm.commit_report(1)["totals"]["commits"] == 4
     assert cm.commit_report(1)["outsiders"]["commits"] == 0
+
+
+# ── recorte por sprint ───────────────────────────────────────────────────
+
+def seed_com_sprints() -> None:
+    """Commits citando issues de duas sprints, mais um sem issue nenhuma."""
+    seed([
+        (1, "s1", "s1", "feat(#1): adiciona o filtro", "Ana", "ana@x.com", iso(-9), 1, 0, 0, "u1"),
+        (1, "s2", "s2", "Fix (#1): corrige", "Ana", "ana@x.com", iso(-8), 1, 0, 0, "u2"),
+        (1, "s3", "s3", "docs(#2): documenta", "Ana", "ana@x.com", iso(-7), 1, 0, 0, "u3"),
+        (1, "s4", "s4", "chore: sem issue", "Ana", "ana@x.com", iso(-6), 1, 0, 0, "u4"),
+    ])
+    with session() as conn:
+        conn.execute("DELETE FROM issues")
+        conn.execute("DELETE FROM label_events")
+        conn.executemany(
+            "INSERT INTO issues (project_id, iid, id, title, state, milestone, assignee_name)"
+            " VALUES (?,?,?,?,?,?,?)",
+            [(1, 1, 11, "Login", "closed", "Sprint 1", "Ana"),
+             (1, 2, 12, "Cache", "opened", "Sprint 2", "Ana"),
+             (1, 3, 13, "Solta", "opened", None, "Ana")],
+        )
+        conn.execute(
+            "INSERT INTO label_events VALUES (1,1,1,'add','Doing',7,'Ana Paula Souza',?)",
+            (iso(-9),),
+        )
+
+
+def test_commit_entra_na_sprint_da_issue_que_cita():
+    """Data nao serve: commit do primeiro dia da sprint 2 pode ser de uma
+    issue arrastada da sprint 1."""
+    seed_com_sprints()
+    assert cm.commit_report(1, milestone="Sprint 1")["totals"]["commits"] == 2
+    assert cm.commit_report(1, milestone="Sprint 2")["totals"]["commits"] == 1
+
+
+def test_commit_sem_issue_fica_de_fora_e_e_declarado():
+    seed_com_sprints()
+    r = cm.commit_report(1, milestone="Sprint 1")
+    assert r["unlinked_commits"] == 1
+    assert r["milestone"] == "Sprint 1"
+    assert "s4" not in {c["short_id"] for c in r["recent"]}
+
+
+def test_sem_sprint_escolhida_tudo_entra():
+    seed_com_sprints()
+    r = cm.commit_report(1)
+    assert r["totals"]["commits"] == 4 and r["unlinked_commits"] == 0
+
+
+def test_aderencia_tambem_recorta_por_sprint():
+    seed_com_sprints()
+    s1 = cm.convention_report(1, milestone="Sprint 1")
+    s2 = cm.convention_report(1, milestone="Sprint 2")
+    assert s1["totals"] == {"commits": 2, "ok": 1, "off": 1, "pct": 50.0}
+    assert s2["totals"]["pct"] == 100.0
+
+
+def test_issue_citada_de_outro_projeto_nao_entra():
+    """`#99` nao existe no cache: nao da para dizer a sprint dele."""
+    seed_com_sprints()
+    with session() as conn:
+        conn.execute(
+            "INSERT INTO commits (project_id, id, short_id, title, author_name,"
+            " author_email, committed_at, additions, deletions, is_merge, web_url)"
+            " VALUES (1,'s5','s5','feat(#99): de outro repo','Ana','ana@x.com',?,1,0,0,'u5')",
+            (iso(-5),),
+        )
+    r = cm.commit_report(1, milestone="Sprint 1")
+    assert r["totals"]["commits"] == 2 and r["unlinked_commits"] == 2
