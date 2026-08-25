@@ -2,7 +2,7 @@
 
 import os
 import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 
 os.environ.setdefault("GITLAB_TOKEN", "test-token")
 _DB = os.path.join(tempfile.mkdtemp(), "test.db")
@@ -694,3 +694,55 @@ def test_a_regra_vale_para_coluna_fila_e_lead_time(monkeypatch):
     # o seed usa horas relativas a agora, entao o total so pode encolher
     assert sum(c["total_hours"] for c in com_fds["contributors"]) <= \
         sum(c["total_hours"] for c in sem_regra["contributors"])
+
+
+# ── faixas nao uteis do dia ──────────────────────────────────────────────
+
+def com_janela(monkeypatch, faixa="10:00-14:00"):
+    """Liga a faixa nao util sem mexer no .env de quem roda os testes."""
+    monkeypatch.setattr(metrics, "non_working_windows",
+                        lambda: [(time.fromisoformat(faixa.split("-")[0]),
+                                  time.fromisoformat(faixa.split("-")[1]))])
+
+
+def test_janela_de_aula_nao_conta(monkeypatch):
+    """Das 10h as 14h o time esta em aula: um card que passa das 9h as 15h
+    ficou 2h de trabalho, nao 6h."""
+    com_janela(monkeypatch)
+    assert approx(metrics.elapsed(local("2026-08-18T09:00"),
+                                 local("2026-08-18T15:00")) / 3600, 2)
+
+
+def test_intervalo_inteiro_dentro_da_janela_e_zero(monkeypatch):
+    com_janela(monkeypatch)
+    assert metrics.elapsed(local("2026-08-18T11:00"), local("2026-08-18T13:00")) == 0.0
+
+
+def test_fora_da_janela_o_tempo_e_inteiro(monkeypatch):
+    com_janela(monkeypatch)
+    assert approx(metrics.elapsed(local("2026-08-18T18:00"),
+                                 local("2026-08-19T09:00")) / 3600, 15)
+
+
+def test_janela_e_fim_de_semana_nao_descontam_duas_vezes(monkeypatch, com_fim_de_semana):
+    """O sabado ja saiu inteiro; descontar a janela dele tiraria o mesmo
+    tempo duas vezes."""
+    com_janela(monkeypatch)
+    # sexta 9h -> segunda 11h: 11h uteis na sexta + 10h na segunda
+    assert approx(metrics.elapsed(local("2026-08-21T09:00"),
+                                 local("2026-08-24T11:00")) / 3600, 21)
+
+
+def test_dia_util_tem_vinte_horas(monkeypatch, com_fim_de_semana):
+    com_janela(monkeypatch)
+    assert approx(metrics.elapsed(local("2026-08-17T00:00"),
+                                 local("2026-08-24T00:00")) / 3600, 100)
+
+
+def test_faixa_mal_escrita_e_ignorada(monkeypatch):
+    """`.env` com a faixa torta nao pode derrubar o dash nem zerar o tempo."""
+    settings = get_settings()
+    monkeypatch.setattr(settings, "non_working_hours", "dez as duas, 14:00-10:00")
+    assert metrics.non_working_windows() == []
+    assert approx(metrics.elapsed(local("2026-08-18T09:00"),
+                                  local("2026-08-18T15:00")) / 3600, 6)
