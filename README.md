@@ -394,8 +394,10 @@ dando 100% do tempo de revisão para a pessoa errada.
 ### Calendário: o que é hora útil
 
 ```bash
-SKIP_WEEKENDS=true               # padrão
-NON_WORKING_HOURS=10:00-14:00    # aula/almoço, por exemplo (vazio = dia inteiro)
+SKIP_WEEKENDS=true                           # padrão
+NON_WORKING_HOURS=00:00-08:00,10:00-14:00    # madrugada + aula/almoço
+HOLIDAY_CALENDAR=br                          # feriados nacionais; vazio = nenhum
+HOLIDAYS=2026-01-25                          # extras (municipal, recesso)
 ```
 
 Sábado e domingo **não contam como tempo** em nenhuma métrica: coluna, fila,
@@ -418,17 +420,30 @@ dash, das 10h às 14h é aula e almoço, então um card que ficou das 9h às 15h
 (`12:00-13:00,18:00-19:00`), e uma faixa mal escrita no `.env` é ignorada em
 vez de derrubar o dash.
 
-As duas regras não se atropelam: o sábado já saiu inteiro pelo fim de semana,
-então a janela daquele dia não é descontada de novo. Com as duas ligadas, um
-dia útil tem **20h** e uma semana tem **100h**.
+A faixa da madrugada saiu dos próprios dados: entre 00h e 08h o time registrou
+**1 commit e 1 evento de board** em todo o histórico, enquanto 22h e 23h somam
+11 commits e 26 eventos — por isso a noite conta e a madrugada não.
+
+`HOLIDAY_CALENDAR=br` tira os feriados nacionais, inclusive os móveis: carnaval,
+sexta-feira santa e corpus christi saem da data da Páscoa (algoritmo de
+Gauss/Meeus), então valem para qualquer ano sem tabela para manter. O 20/11
+entra a partir de 2024 (Lei 14.759). `HOLIDAYS=` acrescenta datas do calendário
+da turma, e uma data mal escrita é ignorada em vez de derrubar o dash.
+
+As regras não se atropelam: um dia que já saiu inteiro — fim de semana ou
+feriado — não tem a janela descontada de novo. Com tudo ligado, o dia útil do
+time tem **12h** (24 − 8 de madrugada − 4 de aula).
 
 Efeito acumulado num board real:
 
-| métrica | tempo de relógio | sem fim de semana | sem fds e sem 10h–14h |
-|---|---|---|---|
-| tempo em `Doing` | 6d 8h | 6d 8h | **5d 15h** |
-| média da fila | 1d 3h | 23h 04m | **19h 52m** |
-| lead time da Sprint 01 | 2,4 dias | 2,0 dias | **1,7 dias** |
+| métrica | relógio | −fim de semana | −aula (10–14h) | −madrugada (00–08h) |
+|---|---|---|---|---|
+| tempo em `Doing` | 6d 9h | 6d 9h | 5d 16h | **5d 8h** |
+| média da fila | 1d 3h | 23h 04m | 19h 52m | **11h 37m** |
+| lead time da Sprint 01 | 2,4 dias | 2,0 dias | 1,7 dias | **1,0 dia** |
+
+A fila é quem mais muda: um card que espera revisão da noite para o dia parecia
+um gargalo de 19h e é, em tempo de trabalho, menos da metade disso.
 
 ### Colunas de fila
 
