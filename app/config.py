@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     # Coluna que representa "trabalho acontecendo". Vazio = detecta sozinho.
     focus_label: str = ""
 
+    # Faixas do dia que nao sao tempo de trabalho (aula, almoco). Formato
+    # HH:MM-HH:MM, separadas por virgula. Vazio = o dia inteiro conta.
+    non_working_hours: str = ""
+
     # Sabado e domingo nao contam como tempo de trabalho: um card que passa
     # a sexta-feira em Review nao ficou 3 dias esperando, ficou 1 dia util.
     # O fim de semana e avaliado no fuso da maquina que roda o dash.
@@ -51,6 +55,18 @@ class Settings(BaseSettings):
     # conta na analise de gargalo (e onde o fluxo trava) mas nao entra no
     # tempo de ninguem — ninguem esta trabalhando enquanto o card espera.
     queue_labels: str = ""
+
+    @property
+    def non_working_list(self) -> list[tuple[str, str]]:
+        faixas = []
+        for parte in self.non_working_hours.split(","):
+            parte = parte.strip()
+            if not parte:
+                continue
+            inicio, _, fim = parte.partition("-")
+            if inicio.strip() and fim.strip():
+                faixas.append((inicio.strip(), fim.strip()))
+        return faixas
 
     @property
     def project_list(self) -> list[str]:

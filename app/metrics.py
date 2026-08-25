@@ -232,6 +232,45 @@ def _weekend_seconds(start: datetime, end: datetime) -> float:
     return total
 
 
+def non_working_windows() -> list[tuple[time, time]]:
+    """Faixas do dia que nao sao trabalho (aula, almoco), ja convertidas."""
+    saida = []
+    for inicio, fim in get_settings().non_working_list:
+        try:
+            h1, h2 = time.fromisoformat(inicio), time.fromisoformat(fim)
+        except ValueError:
+            continue          # faixa mal escrita no .env nao derruba o dash
+        if h2 > h1:
+            saida.append((h1, h2))
+    return saida
+
+
+def _blocked_seconds(start: datetime, end: datetime) -> float:
+    """Quanto do intervalo caiu nas faixas nao uteis de cada dia.
+
+    So conta nos dias que ja contam: descontar a janela de um sabado seria
+    tirar duas vezes o mesmo tempo, porque o fim de semana inteiro ja saiu.
+    """
+    janelas = non_working_windows()
+    if not janelas:
+        return 0.0
+    inicio, fim = start.astimezone(), end.astimezone()
+    total = 0.0
+    dia = inicio.date()
+    while dia <= fim.date():
+        if skip_weekends() and dia.weekday() >= 5:
+            dia += timedelta(days=1)
+            continue
+        for h1, h2 in janelas:
+            janela_ini = datetime.combine(dia, h1, tzinfo=inicio.tzinfo)
+            janela_fim = datetime.combine(dia, h2, tzinfo=inicio.tzinfo)
+            sobreposicao = min(fim, janela_fim) - max(inicio, janela_ini)
+            if sobreposicao.total_seconds() > 0:
+                total += sobreposicao.total_seconds()
+        dia += timedelta(days=1)
+    return total
+
+
 def elapsed(start: datetime | None, end: datetime | None) -> float:
     """Segundos uteis entre dois instantes — a unica conta de tempo do dash.
 
@@ -241,9 +280,9 @@ def elapsed(start: datetime | None, end: datetime | None) -> float:
     if start is None or end is None or end <= start:
         return 0.0
     bruto = (end - start).total_seconds()
-    if not skip_weekends():
-        return bruto
-    return max(0.0, bruto - _weekend_seconds(start, end))
+    if skip_weekends():
+        bruto -= _weekend_seconds(start, end)
+    return max(0.0, bruto - _blocked_seconds(start, end))
 
 
 def parse_ts(value: str | None) -> datetime | None:
