@@ -4,8 +4,9 @@
 VIEWS.commits = { title: "Commits", node: "view-commits" };
 SUBTITLES.commits = {
   plain: "Volume, ritmo e horario dos commits. O filtro de periodo vale aqui;"
-    + " sprint e coluna nao (commit nao passa por board).",
-  scoped: () => SUBTITLES.commits.plain,
+    + " coluna nao, porque commit nao passa por board.",
+  scoped: (m) => `Commits de ${m}. A sprint de um commit e a da issue que ele`
+    + ` cita — quem nao cita issue fica de fora.`,
 };
 
 const fmtInt = (n) => n.toLocaleString("pt-BR");
@@ -236,8 +237,11 @@ const commitFilters = { author: "", onlyOff: false };
 function commitParams(extra = {}) {
   const p = new URLSearchParams();
   if ($("project").value) p.set("project", $("project").value);
-  // sprint e coluna sao dimensoes de board; commit nao passa por elas
-  if ($("days").value && !$("milestone").value) p.set("days", $("days").value);
+  // a sprint de um commit e a da issue que ele cita; como no resto do dash,
+  // uma sprint escolhida ja delimita o periodo
+  const sprint = $("milestone").value;
+  if (sprint) p.set("milestone", sprint);
+  else if ($("days").value) p.set("days", $("days").value);
   if (commitFilters.author) p.set("author", commitFilters.author);
   for (const [k, v] of Object.entries(extra)) p.set(k, v);
   return p;
@@ -315,10 +319,19 @@ function outsidersNote(nota) {
 }
 
 function renderCommitStats(t) {
-  const nota = outsidersNote(state.commits?.outsiders);
+  const d = state.commits;
+  const nota = outsidersNote(d?.outsiders);
+  const sprint = d?.milestone
+    ? ` Recorte de <b>${esc(d.milestone)}</b>: entram os commits que citam issues`
+      + ` dela.${d.unlinked_commits
+          ? ` <b>${d.unlinked_commits}</b> commits nao citam issue nenhuma e ficam de fora.`
+          : ""}`
+    : "";
   $("c-sub").innerHTML = t.commits
-    ? `Merge commits ficam de fora: eles repetem as linhas dos commits que trazem.${nota}`
-    : `Nenhum commit no periodo. Se o projeto acabou de ser sincronizado, rode o sync de novo.`;
+    ? `Merge commits ficam de fora: eles repetem as linhas dos commits que trazem.${sprint}${nota}`
+    : (d?.milestone
+        ? `Nenhum commit citando issues de ${esc(d.milestone)}.`
+        : `Nenhum commit no periodo. Se o projeto acabou de ser sincronizado, rode o sync de novo.`);
 
   $("c-stats").innerHTML = [
     { label: "Commits", value: fmtInt(t.commits), note: `${t.authors} autores` },
