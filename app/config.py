@@ -24,6 +24,15 @@ class Settings(BaseSettings):
     # HH:MM-HH:MM, separadas por virgula. Vazio = o dia inteiro conta.
     non_working_hours: str = ""
 
+    # Feriados nacionais calculados automaticamente. "br" = Brasil, vazio =
+    # nenhum. Os moveis (carnaval, sexta-feira santa, corpus christi) saem da
+    # data da Pascoa, entao valem para qualquer ano sem tabela nova.
+    holiday_calendar: str = "br"
+
+    # Feriados extras (municipal, recesso, semana de prova), em ISO e
+    # separados por virgula. Ex.: 2026-01-25,2026-07-09
+    holidays: str = ""
+
     # Sabado e domingo nao contam como tempo de trabalho: um card que passa
     # a sexta-feira em Review nao ficou 3 dias esperando, ficou 1 dia util.
     # O fim de semana e avaliado no fuso da maquina que roda o dash.
@@ -55,6 +64,10 @@ class Settings(BaseSettings):
     # conta na analise de gargalo (e onde o fluxo trava) mas nao entra no
     # tempo de ninguem — ninguem esta trabalhando enquanto o card espera.
     queue_labels: str = ""
+
+    @property
+    def holiday_list(self) -> list[str]:
+        return [d.strip() for d in self.holidays.split(",") if d.strip()]
 
     @property
     def non_working_list(self) -> list[tuple[str, str]]:
