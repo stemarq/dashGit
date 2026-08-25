@@ -288,10 +288,9 @@ def is_off_day(dia: date) -> bool:
     return dia in holidays(dia.year)
 
 
-def non_working_windows() -> list[tuple[time, time]]:
-    """Faixas do dia que nao sao trabalho (aula, almoco), ja convertidas."""
+def _parse_windows(faixas: list[tuple[str, str]]) -> list[tuple[time, time]]:
     saida = []
-    for inicio, fim in get_settings().non_working_list:
+    for inicio, fim in faixas:
         try:
             h1, h2 = time.fromisoformat(inicio), time.fromisoformat(fim)
         except ValueError:
@@ -301,13 +300,30 @@ def non_working_windows() -> list[tuple[time, time]]:
     return saida
 
 
-def _blocked_seconds(start: datetime, end: datetime) -> float:
+def non_working_windows() -> list[tuple[time, time]]:
+    """Faixas que nao sao trabalho em conta nenhuma (madrugada)."""
+    return _parse_windows(get_settings().non_working_list)
+
+
+def queue_non_working_windows() -> list[tuple[time, time]]:
+    """Faixas que nao contam para a fila, alem das gerais.
+
+    A fila mede *obrigacao de revisar*, nao trabalho: da para escrever codigo
+    durante a aula, mas nao da para cobrar de alguem uma revisao no horario em
+    que a turma esta em sala. Por isso a aula sai daqui, e nao do tempo de
+    quem estava executando.
+    """
+    return non_working_windows() + _parse_windows(get_settings().queue_non_working_list)
+
+
+def _blocked_seconds(
+    start: datetime, end: datetime, janelas: list[tuple[time, time]]
+) -> float:
     """Quanto do intervalo caiu nas faixas nao uteis de cada dia.
 
     So conta nos dias que ja contam: descontar a janela de um sabado seria
     tirar duas vezes o mesmo tempo, porque o fim de semana inteiro ja saiu.
     """
-    janelas = non_working_windows()
     if not janelas:
         return 0.0
     inicio, fim = start.astimezone(), end.astimezone()
@@ -327,16 +343,18 @@ def _blocked_seconds(start: datetime, end: datetime) -> float:
     return total
 
 
-def elapsed(start: datetime | None, end: datetime | None) -> float:
+def elapsed(start: datetime | None, end: datetime | None, queue: bool = False) -> float:
     """Segundos uteis entre dois instantes — a unica conta de tempo do dash.
 
-    Tudo passa por aqui (coluna, fila, lead time) para que ligar ou desligar
-    o fim de semana mude todos os numeros de uma vez, e nao metade deles.
+    Tudo passa por aqui (coluna, fila, lead time) para que mexer no calendario
+    mova todos os numeros de uma vez, e nao metade deles. `queue` mede espera
+    por alguem, que tem faixas proprias — ver `queue_non_working_windows`.
     """
     if start is None or end is None or end <= start:
         return 0.0
+    janelas = queue_non_working_windows() if queue else non_working_windows()
     bruto = (end - start).total_seconds() - _off_day_seconds(start, end)
-    return max(0.0, bruto - _blocked_seconds(start, end))
+    return max(0.0, bruto - _blocked_seconds(start, end, janelas))
 
 
 def parse_ts(value: str | None) -> datetime | None:
@@ -362,7 +380,9 @@ class Interval:
         return self.end is not None
 
     def seconds(self, now: datetime) -> float:
-        return elapsed(self.start, self.end or now)
+        # coluna de fila mede espera por alguem, e tem calendario proprio
+        return elapsed(self.start, self.end or now,
+                       queue=self.label.lower() in queue_labels())
 
 
 @dataclass
@@ -704,7 +724,7 @@ def contributor_report(
             if end <= start:
                 continue
             person = per_person.setdefault(debtor, blank(debtor))
-            person["waiting_seconds"] += elapsed(start, end)
+            person["waiting_seconds"] += elapsed(start, end, queue=True)
             person["waiting_issues"].add(tl.iid)
 
         for itv in tl.intervals:
