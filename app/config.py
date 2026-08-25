@@ -20,9 +20,14 @@ class Settings(BaseSettings):
     # Coluna que representa "trabalho acontecendo". Vazio = detecta sozinho.
     focus_label: str = ""
 
-    # Faixas do dia que nao sao tempo de trabalho (aula, almoco). Formato
-    # HH:MM-HH:MM, separadas por virgula. Vazio = o dia inteiro conta.
+    # Faixas do dia que nao sao tempo de trabalho em conta nenhuma (madrugada).
+    # Formato HH:MM-HH:MM, separadas por virgula. Vazio = o dia inteiro conta.
     non_working_hours: str = ""
+
+    # Faixas que valem so para a fila — o tempo em que alguem esta *devendo*
+    # revisao. Dar para fazer tarefa durante a aula nao significa que da para
+    # cobrar revisao no mesmo horario, entao a aula sai daqui e nao do resto.
+    queue_non_working_hours: str = ""
 
     # Feriados nacionais calculados automaticamente. "br" = Brasil, vazio =
     # nenhum. Os moveis (carnaval, sexta-feira santa, corpus christi) saem da
@@ -69,10 +74,10 @@ class Settings(BaseSettings):
     def holiday_list(self) -> list[str]:
         return [d.strip() for d in self.holidays.split(",") if d.strip()]
 
-    @property
-    def non_working_list(self) -> list[tuple[str, str]]:
+    @staticmethod
+    def _faixas(texto: str) -> list[tuple[str, str]]:
         faixas = []
-        for parte in self.non_working_hours.split(","):
+        for parte in texto.split(","):
             parte = parte.strip()
             if not parte:
                 continue
@@ -80,6 +85,14 @@ class Settings(BaseSettings):
             if inicio.strip() and fim.strip():
                 faixas.append((inicio.strip(), fim.strip()))
         return faixas
+
+    @property
+    def non_working_list(self) -> list[tuple[str, str]]:
+        return self._faixas(self.non_working_hours)
+
+    @property
+    def queue_non_working_list(self) -> list[tuple[str, str]]:
+        return self._faixas(self.queue_non_working_hours)
 
     @property
     def project_list(self) -> list[str]:
