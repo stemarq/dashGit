@@ -124,6 +124,12 @@ def boards(project: str | None = None) -> dict[str, Any]:
         "attribution": metrics.attribution_mode(),
         "skip_weekends": metrics.skip_weekends(),
         "non_working_hours": get_settings().non_working_list,
+        # o grafico do cliente precisa saber quais dias sumiram do eixo
+        "holidays": sorted(
+            str(d)
+            for ano in (datetime.now().year - 1, datetime.now().year, datetime.now().year + 1)
+            for d in metrics.holidays(ano)
+        ),
         "queue_labels": get_settings().queue_list,
         "scope": metrics.scope_mode(),
         "boards": list(grouped.values()),
