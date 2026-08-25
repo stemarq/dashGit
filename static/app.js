@@ -27,6 +27,7 @@ const state = {
   summary: null,
   milestones: [],
   skipWeekends: true,
+  nonWorking: [],
 };
 
 const SERIES = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6"];
@@ -122,6 +123,21 @@ const colorOf = (label) => state.colors[label] || cssVar("--ink-3");
 /** Fim de semana no fuso de quem olha, igual ao servidor. */
 const isWeekend = (data) => data.getDay() === 0 || data.getDay() === 6;
 
+/** Quanto do trecho caiu nas faixas nao uteis do dia (aula, almoco).
+ *  O grafico precisa descontar o mesmo que o servidor, senao a soma das
+ *  barras nao fecha com o total mostrado ao lado. */
+function blockedMs(from, to, dayStart) {
+  let total = 0;
+  for (const [inicio, fim] of state.nonWorking) {
+    const [h1, m1] = inicio.split(":").map(Number);
+    const [h2, m2] = fim.split(":").map(Number);
+    const abre = dayStart.getTime() + (h1 * 60 + m1) * 60000;
+    const fecha = dayStart.getTime() + (h2 * 60 + m2) * 60000;
+    total += Math.max(0, Math.min(to, fecha) - Math.max(from, abre));
+  }
+  return total;
+}
+
 function dailySeries(issues, labels, sinceDays) {
   const until = Date.now();
   const since = sinceDays ? until - sinceDays * DAY : null;
@@ -143,10 +159,11 @@ function dailySeries(issues, labels, sinceDays) {
       while (cursor < end) {
         const dayStart = new Date(cursor); dayStart.setHours(0, 0, 0, 0);
         const dayEnd = dayStart.getTime() + DAY;
-        const slice = Math.min(end, dayEnd) - cursor;
+        const fimDoTrecho = Math.min(end, dayEnd);
+        const slice = fimDoTrecho - cursor - blockedMs(cursor, fimDoTrecho, dayStart);
         // sabado e domingo nao contam, como no servidor: sem isso o grafico
         // mostraria trabalho no fim de semana e nao bateria com os totais
-        if (!(state.skipWeekends && isWeekend(dayStart))) {
+        if (slice > 0 && !(state.skipWeekends && isWeekend(dayStart))) {
           const key = dayStart.toISOString().slice(0, 10);
           const bucket = byDay.get(key) || {};
           bucket[t.label] = (bucket[t.label] || 0) + slice / 3600000;
@@ -1006,7 +1023,6 @@ function renderExclusions(boardData, focus) {
   state.attribution = boardData?.attribution || "mover";
   state.queues = boardData?.queue_labels || [];
   state.scope = boardData?.scope || "assigned";
-  state.skipWeekends = boardData?.skip_weekends ?? true;
   const regra = state.scope === "assigned"
     ? `Conta o que a pessoa fez nas <b>issues atribuidas a ela</b>${
         state.review ? `, mais o tempo dela em <b>${esc(state.review)}</b>` : ""}.
@@ -1025,7 +1041,11 @@ function renderExclusions(boardData, focus) {
     ? ` <b>Sabado e domingo nao contam</b>: um card que atravessa a sexta-feira
         marca um dia util, nao tres.`
     : "";
-  $("attribution-note").innerHTML = regra + fila + semana;
+  const janela = state.nonWorking.length
+    ? ` Fora do expediente tambem nao conta: <b>${state.nonWorking
+        .map(([a, b]) => `${esc(a)}–${esc(b)}`).join(", ")}</b>.`
+    : "";
+  $("attribution-note").innerHTML = regra + fila + semana + janela;
   $("issues-sub").innerHTML = focus
     ? `Ranqueadas pelo tempo em <b>${esc(focus)}</b>, nao pelo lead time —
        uma issue esquecida na fila nao e uma issue demorada.
@@ -1097,6 +1117,11 @@ async function refresh() {
     if (!order.includes(l)) order.push(l);
   }
   assignColors(order);
+
+  // as regras de calendario entram antes da serie diaria: e ela que desconta
+  // fim de semana e janela nao util no cliente
+  state.skipWeekends = boardData?.skip_weekends ?? true;
+  state.nonWorking = boardData?.non_working_hours || [];
 
   state.contributors = contribData;
   state.columns = columnData;
