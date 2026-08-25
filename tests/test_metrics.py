@@ -816,3 +816,58 @@ def test_sem_calendario_o_feriado_conta(monkeypatch):
     metrics._national_holidays.cache_clear()
     assert approx(metrics.elapsed(local("2026-09-07T08:00"),
                                  local("2026-09-07T20:00")) / 3600, 12)
+
+
+# ── calendario proprio da fila ───────────────────────────────────────────
+
+def com_janela_de_fila(monkeypatch, gerais="", fila="10:00-14:00"):
+    """Aula so sai da fila; o resto do dia continua contando como trabalho."""
+    parse = metrics._parse_windows
+    faixas = lambda t: [tuple(x.split("-")) for x in t.split(",") if x]  # noqa: E731
+    monkeypatch.setattr(metrics, "non_working_windows", lambda: parse(faixas(gerais)))
+    monkeypatch.setattr(metrics, "queue_non_working_windows",
+                        lambda: parse(faixas(gerais)) + parse(faixas(fila)))
+
+
+def test_aula_conta_como_trabalho_mas_nao_como_cobranca(monkeypatch):
+    """Da para escrever codigo durante a aula; nao da para cobrar revisao de
+    quem esta em sala."""
+    com_janela_de_fila(monkeypatch)
+    inicio, fim = local("2026-08-18T09:00"), local("2026-08-18T15:00")
+    assert approx(metrics.elapsed(inicio, fim) / 3600, 6)
+    assert approx(metrics.elapsed(inicio, fim, queue=True) / 3600, 2)
+
+
+def test_a_coluna_de_fila_usa_o_calendario_da_fila(monkeypatch):
+    """O intervalo sabe se e fila: quem soma nao precisa lembrar da regra."""
+    com_janela_de_fila(monkeypatch)
+    monkeypatch.setattr(metrics, "queue_labels", lambda: {"waiting review"})
+    inicio, fim = local("2026-08-18T09:00"), local("2026-08-18T15:00")
+    espera = metrics.Interval("Waiting Review", inicio, fim, "Ana")
+    trabalho = metrics.Interval("Doing", inicio, fim, "Ana")
+    agora = local("2026-08-18T20:00")
+    assert approx(espera.seconds(agora) / 3600, 2)
+    assert approx(trabalho.seconds(agora) / 3600, 6)
+
+
+def test_madrugada_sai_das_duas_contas(monkeypatch):
+    com_janela_de_fila(monkeypatch, gerais="00:00-08:00")
+    inicio, fim = local("2026-08-18T06:00"), local("2026-08-18T09:00")
+    assert approx(metrics.elapsed(inicio, fim) / 3600, 1)
+    assert approx(metrics.elapsed(inicio, fim, queue=True) / 3600, 1)
+
+
+def test_espera_causada_usa_o_calendario_da_fila(monkeypatch):
+    """A metrica de espera e a razao de a regra existir: ela mede cobranca."""
+    seed()
+    with session() as conn:
+        conn.execute(
+            "INSERT INTO label_events VALUES (30,1,1,'add','Doing',3,'Bruno',?)", (iso(-15),)
+        )
+    monkeypatch.setattr(metrics, "queue_labels", lambda: {"review"})
+    sem_aula = metrics.contributor_report(1)
+    com_janela_de_fila(monkeypatch)
+    com_aula = metrics.contributor_report(1)
+    espera = lambda r: next(c["waiting_hours"] for c in r["contributors"]  # noqa: E731
+                            if c["contributor"] == "Bruno")
+    assert espera(com_aula) <= espera(sem_aula)
