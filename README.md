@@ -391,10 +391,11 @@ quem move para `Doing` era o assignee em **95/95** issues, e quem move para
 `Review` era o assignee em apenas **1/86** — ou seja, o modo `assignee` estava
 dando 100% do tempo de revisão para a pessoa errada.
 
-### Fim de semana
+### Calendário: o que é hora útil
 
 ```bash
-SKIP_WEEKENDS=true   # padrão
+SKIP_WEEKENDS=true               # padrão
+NON_WORKING_HOURS=10:00-14:00    # aula/almoço, por exemplo (vazio = dia inteiro)
 ```
 
 Sábado e domingo **não contam como tempo** em nenhuma métrica: coluna, fila,
@@ -411,8 +412,23 @@ sexta-feira brasileira já seria sábado às 21h.
 O gráfico diário segue a mesma regra: os dias de fim de semana somem do eixo,
 senão a linha mostraria trabalho no sábado e não bateria com os totais.
 
-Num board real, a mudança tirou 96h da espera causada de uma pessoa (quatro
-fins de semana) e baixou o lead time médio da Sprint 01 de 2,4 para 2,0 dias.
+`NON_WORKING_HOURS` tira do cálculo faixas fixas do dia — no time que usa este
+dash, das 10h às 14h é aula e almoço, então um card que ficou das 9h às 15h em
+`Doing` marca **2h**, não 6h. Aceita várias faixas separadas por vírgula
+(`12:00-13:00,18:00-19:00`), e uma faixa mal escrita no `.env` é ignorada em
+vez de derrubar o dash.
+
+As duas regras não se atropelam: o sábado já saiu inteiro pelo fim de semana,
+então a janela daquele dia não é descontada de novo. Com as duas ligadas, um
+dia útil tem **20h** e uma semana tem **100h**.
+
+Efeito acumulado num board real:
+
+| métrica | tempo de relógio | sem fim de semana | sem fds e sem 10h–14h |
+|---|---|---|---|
+| tempo em `Doing` | 6d 8h | 6d 8h | **5d 15h** |
+| média da fila | 1d 3h | 23h 04m | **19h 52m** |
+| lead time da Sprint 01 | 2,4 dias | 2,0 dias | **1,7 dias** |
 
 ### Colunas de fila
 
