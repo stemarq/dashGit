@@ -2,7 +2,7 @@
 
 import os
 import tempfile
-from datetime import datetime, time, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 os.environ.setdefault("GITLAB_TOKEN", "test-token")
 _DB = os.path.join(tempfile.mkdtemp(), "test.db")
@@ -746,3 +746,73 @@ def test_faixa_mal_escrita_e_ignorada(monkeypatch):
     assert metrics.non_working_windows() == []
     assert approx(metrics.elapsed(local("2026-08-18T09:00"),
                                   local("2026-08-18T15:00")) / 3600, 6)
+
+
+# ── feriados ─────────────────────────────────────────────────────────────
+
+# capturada na importacao, antes de o conftest desligar o calendario
+_HOLIDAYS_REAL = metrics.holidays
+
+
+def com_feriados(monkeypatch, extras=""):
+    """Liga o calendario brasileiro sem depender do .env da maquina."""
+    settings = get_settings()
+    monkeypatch.setattr(settings, "holiday_calendar", "br")
+    monkeypatch.setattr(settings, "holidays", extras)
+    monkeypatch.setattr(metrics, "holidays", _HOLIDAYS_REAL)
+    metrics._national_holidays.cache_clear()
+
+
+def test_feriado_fixo_nao_conta(monkeypatch):
+    """7 de setembro de 2026 cai numa segunda-feira."""
+    com_feriados(monkeypatch)
+    assert metrics.elapsed(local("2026-09-07T08:00"), local("2026-09-07T20:00")) == 0.0
+
+
+def test_feriado_movel_sai_da_pascoa(monkeypatch):
+    """Carnaval, sexta-feira santa e corpus christi mudam de data todo ano."""
+    com_feriados(monkeypatch)
+    assert metrics._easter(2026) == date(2026, 4, 5)   # pascoa
+    assert date(2026, 2, 17) in metrics.holidays(2026)   # carnaval
+    assert date(2026, 4, 3) in metrics.holidays(2026)    # sexta-feira santa
+    assert date(2026, 6, 4) in metrics.holidays(2026)    # corpus christi
+    assert date(2025, 3, 4) in metrics.holidays(2025)    # carnaval do ano anterior
+
+
+def test_intervalo_que_atravessa_o_feriado(monkeypatch):
+    """Sexta 21/04/2026 (Tiradentes) cai numa terca: de segunda a quarta o
+    card so acumula os dois dias uteis."""
+    com_feriados(monkeypatch)
+    assert approx(metrics.elapsed(local("2026-04-20T08:00"),
+                                 local("2026-04-22T08:00")) / 3600, 24)
+
+
+def test_feriado_extra_do_calendario_da_turma(monkeypatch):
+    com_feriados(monkeypatch, extras="2026-08-18")
+    assert metrics.elapsed(local("2026-08-18T09:00"), local("2026-08-18T18:00")) == 0.0
+    assert date(2026, 8, 18) in metrics.holidays(2026)
+
+
+def test_data_torta_em_holidays_e_ignorada(monkeypatch):
+    com_feriados(monkeypatch, extras="18/08/2026, 2026-08-19")
+    assert date(2026, 8, 19) in metrics.holidays(2026)
+    assert metrics.elapsed(local("2026-08-18T09:00"), local("2026-08-18T18:00")) > 0
+
+
+def test_feriado_e_janela_nao_descontam_duas_vezes(monkeypatch):
+    """O feriado ja saiu inteiro; descontar a janela dele dobraria a conta."""
+    com_feriados(monkeypatch)
+    com_janela(monkeypatch)
+    # 20/04 (segunda) e 22/04 (quarta) contam 20h cada; 21/04 e feriado
+    assert approx(metrics.elapsed(local("2026-04-20T00:00"),
+                                 local("2026-04-23T00:00")) / 3600, 40)
+
+
+def test_sem_calendario_o_feriado_conta(monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "holiday_calendar", "")
+    monkeypatch.setattr(settings, "holidays", "")
+    monkeypatch.setattr(metrics, "holidays", _HOLIDAYS_REAL)
+    metrics._national_holidays.cache_clear()
+    assert approx(metrics.elapsed(local("2026-09-07T08:00"),
+                                 local("2026-09-07T20:00")) / 3600, 12)

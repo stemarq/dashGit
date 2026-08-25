@@ -16,6 +16,7 @@ from app import metrics
 def sem_regras_de_calendario(monkeypatch):
     monkeypatch.setattr(metrics, "skip_weekends", lambda: False)
     monkeypatch.setattr(metrics, "non_working_windows", lambda: [])
+    monkeypatch.setattr(metrics, "holidays", lambda ano: frozenset())
 
 
 @pytest.fixture
