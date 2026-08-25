@@ -24,14 +24,6 @@ def _pct_delta(now: float, before: float) -> float | None:
     return round((now - before) / before * 100, 1)
 
 
-def _issue_milestones(project_id: int) -> dict[int, str]:
-    with session() as conn:
-        rows = conn.execute(
-            "SELECT iid, milestone FROM issues WHERE project_id = ?", (project_id,)
-        ).fetchall()
-    return {r["iid"]: (r["milestone"] or metrics.NO_MILESTONE) for r in rows}
-
-
 def _commits_by_sprint(project_id: int) -> tuple[dict[str, dict[str, int]], int]:
     """Commits por sprint, pela issue que a mensagem cita.
 
@@ -40,7 +32,7 @@ def _commits_by_sprint(project_id: int) -> tuple[dict[str, dict[str, int]], int]
     sprint nenhuma — e o numero de orfaos e devolvido junto, para o relatorio
     poder dizer de quantos commits ele nao sabe a sprint.
     """
-    milestone_of = _issue_milestones(project_id)
+    milestone_of = commit_metrics.issue_milestones(project_id)
     dentro, _ = commit_metrics.split_members(project_id, commit_metrics._rows(project_id))
     out: dict[str, dict[str, int]] = {}
     orphans = 0
@@ -162,7 +154,7 @@ def _sprint_commits(project_id: int, milestone: str) -> list[dict[str, Any]]:
     Commit de quem nao e do time nao entra: o relatorio mede o trabalho da
     equipe, e o bot do template nao faz parte dela.
     """
-    milestone_of = _issue_milestones(project_id)
+    milestone_of = commit_metrics.issue_milestones(project_id)
     dentro, _ = commit_metrics.split_members(project_id, commit_metrics._rows(project_id))
     out = []
     for row in dentro:

@@ -15,7 +15,7 @@ from typing import Any, Iterable
 
 from app.config import get_settings
 from app.db import session
-from app.metrics import format_duration, parse_ts  # noqa: F401  (reuso do formatador)
+from app.metrics import NO_MILESTONE, format_duration, parse_ts  # noqa: F401
 
 WEEKDAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"]
 
@@ -117,12 +117,44 @@ def author_aliases(project_id: int, author: str) -> set[str]:
     }
 
 
+def issue_milestones(project_id: int) -> dict[int, str]:
+    """iid da issue -> sprint dela (ou o balde de quem nao tem sprint)."""
+    with session() as conn:
+        rows = conn.execute(
+            "SELECT iid, milestone FROM issues WHERE project_id = ?", (project_id,)
+        ).fetchall()
+    return {r["iid"]: (r["milestone"] or NO_MILESTONE) for r in rows}
+
+
+def in_milestone(
+    project_id: int, rows: list[Any], milestone: str
+) -> tuple[list[Any], int]:
+    """Commits de uma sprint, pela issue que a mensagem cita.
+
+    Data nao serve para isso: commit do primeiro dia da sprint 2 pode ser de
+    uma issue arrastada da sprint 1. Quem nao cita issue nao entra em sprint
+    nenhuma — e o numero de orfaos volta junto, para a tela poder dizer de
+    quantos commits ela nao sabe a sprint.
+    """
+    milestone_of = issue_milestones(project_id)
+    dentro, orfaos = [], 0
+    for r in rows:
+        iid = issue_ref(r["title"])
+        if iid is None or iid not in milestone_of:
+            orfaos += 1
+            continue
+        if milestone_of[iid] == milestone:
+            dentro.append(r)
+    return dentro, orfaos
+
+
 def _rows(
     project_id: int,
     since: datetime | None = None,
     until: datetime | None = None,
     author: str | None = None,
     include_merges: bool = False,
+    milestone: str | None = None,
 ) -> list[Any]:
     sql = "SELECT * FROM commits WHERE project_id = ?"
     params: list[Any] = [project_id]
@@ -141,6 +173,8 @@ def _rows(
         aliases = author_aliases(project_id, author)
         rows = [r for r in rows if (r["author_name"] or "").lower() in aliases
                 or (r["author_email"] or "").lower() in aliases]
+    if milestone:
+        rows, _ = in_milestone(project_id, rows, milestone)
     return rows
 
 
@@ -343,15 +377,18 @@ def convention_report(
     until: datetime | None = None,
     author: str | None = None,
     include_merges: bool = False,
+    milestone: str | None = None,
 ) -> dict[str, Any]:
     """Quanto de cada pessoa segue a convencao de mensagem de commit.
 
     Merge commit fica de fora por padrao: a mensagem e gerada pelo GitLab e
     reprovar o time por ela nao mede nada.
     """
-    rows, fora_do_time = split_members(
-        project_id, _rows(project_id, since, until, author, include_merges)
-    )
+    todos = _rows(project_id, since, until, author, include_merges)
+    sem_issue = 0
+    if milestone:
+        todos, sem_issue = in_milestone(project_id, todos, milestone)
+    rows, fora_do_time = split_members(project_id, todos)
 
     by_author: dict[str, dict[str, Any]] = {}
     totals_reasons: dict[str, int] = defaultdict(int)
@@ -416,6 +453,8 @@ def convention_report(
         "by_reason": dict(sorted(totals_reasons.items(), key=lambda x: -x[1])),
         "authors": autores,
         "outsiders": outsiders_note(fora_do_time),
+        "milestone": milestone,
+        "unlinked_commits": sem_issue,
     }
 
 
@@ -441,6 +480,7 @@ def commit_report(
     author: str | None = None,
     include_merges: bool = False,
     only_off: bool = False,
+    milestone: str | None = None,
 ) -> dict[str, Any]:
     """Volume, autores, ritmo diario e horario dos commits.
 
@@ -449,9 +489,11 @@ def commit_report(
     lente de leitura; encolher os totais junto seria mentir sobre o volume.
     """
     now = datetime.now(timezone.utc)
-    rows, fora_do_time = split_members(
-        project_id, _rows(project_id, since, until, author, include_merges)
-    )
+    todos = _rows(project_id, since, until, author, include_merges)
+    sem_issue = 0
+    if milestone:
+        todos, sem_issue = in_milestone(project_id, todos, milestone)
+    rows, fora_do_time = split_members(project_id, todos)
 
     by_author: dict[str, dict[str, Any]] = {}
     by_day: dict[str, dict[str, int]] = defaultdict(
@@ -551,4 +593,6 @@ def commit_report(
         "off_convention": len(fora),
         "reason_labels": REASON_LABELS,
         "outsiders": outsiders_note(fora_do_time),
+        "milestone": milestone,
+        "unlinked_commits": sem_issue,
     }
