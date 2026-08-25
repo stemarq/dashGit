@@ -220,6 +220,8 @@ def commits(
                                 " eles repetem as linhas dos commits que trazem)"),
     only_off: bool = Query(False, description="Lista so os commits fora da convencao."
                            " Recorta a listagem, nao os totais"),
+    milestone: str | None = Query(None, description=MILESTONE_DESC + " O commit entra"
+                                  " na sprint da issue que ele cita."),
 ) -> dict[str, Any]:
     """Volume, autores, ritmo diario e horario dos commits.
 
@@ -229,7 +231,7 @@ def commits(
     project_id = _resolve(project)
     return commit_metrics.commit_report(
         project_id, since=_parse_since(since, days), author=author,
-        include_merges=include_merges, only_off=only_off,
+        include_merges=include_merges, only_off=only_off, milestone=milestone,
     )
 
 
@@ -290,12 +292,14 @@ def commit_convention(
     author: str | None = Query(None, description="Nome do autor no git, ou e-mail"),
     include_merges: bool = Query(False, description="Merge commit tem mensagem gerada"
                                 " pelo GitLab: reprovar o time por ela nao mede nada"),
+    milestone: str | None = Query(None, description=MILESTONE_DESC + " O commit entra"
+                                  " na sprint da issue que ele cita."),
 ) -> dict[str, Any]:
     """Aderencia de cada pessoa a `tipo(#issue): descricao`, e o que quebra."""
     project_id = _resolve(project)
     return commit_metrics.convention_report(
         project_id, since=_parse_since(since, days), author=author,
-        include_merges=include_merges,
+        include_merges=include_merges, milestone=milestone,
     )
 
 
